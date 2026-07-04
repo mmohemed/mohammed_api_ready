@@ -5,9 +5,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+import logging
+
 from .. import models, schemas
+from ..ai import llm_assistant
 from ..ai.assistant import answer_question
+from ..ai.insights import generate_insights
 from ..database import get_db
+
+logger = logging.getLogger("erp.ai")
 
 router = APIRouter(tags=["لوحة التحكم والمساعد الذكي"])
 
@@ -85,6 +91,19 @@ def sales_timeseries(days: int = 30, db: Session = Depends(get_db)):
 def ai_assistant(body: schemas.AssistantQuestion, db: Session = Depends(get_db)):
     """🤖 اسأل المساعد الذكي بالعربية عن أي شيء في المصنع.
 
-    أمثلة: "كيف حال المخزون؟" — "هل توجد أعطال في الآلات؟" — "كم إيرادات المبيعات؟"
+    عند تعريف ANTHROPIC_API_KEY يجيب نموذج Claude على أسئلة حرة ومعقدة
+    اعتمادًا على بيانات المصنع الحية؛ وإلا يجيب المساعد القاعدي المدمج.
     """
-    return answer_question(body.question, db)
+    if llm_assistant.is_configured():
+        try:
+            return llm_assistant.ask_claude(body.question, db)
+        except Exception as exc:
+            logger.warning("تعذر الوصول لنموذج Claude، الرجوع للمساعد القاعدي: %s", exc)
+    return {**answer_question(body.question, db), "engine": "rules"}
+
+
+@router.get("/ai/insights")
+def ai_insights(db: Session = Depends(get_db)):
+    """🤖 تقرير الرؤى الذكية: كل توصيات الذكاء الاصطناعي (صيانة، مخزون،
+    جودة، طلب) مجمّعة ومرتبة بالأولوية — تقرير الصباح لمدير المصنع."""
+    return generate_insights(db)

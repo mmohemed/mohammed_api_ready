@@ -27,6 +27,16 @@
    Isolation Forest يرصد أوامر الإنتاج ذات نسب العيوب أو الإنجاز غير الطبيعية.
 5. **مساعد ذكي بالعربية** — `POST /ai/assistant`
    اسأل: «كيف حال المخزون؟» أو «كم إيرادات المبيعات؟» ويجيب من بيانات المصنع الفعلية.
+6. **مساعد Claude للأسئلة الحرة** 🧠 — نفس المسار `POST /ai/assistant`
+   عند تعريف `ANTHROPIC_API_KEY` يتولى نموذج **Claude** الإجابة على أسئلة معقدة وتحليلات حرة
+   («ما أكبر ثلاثة مخاطر هذا الأسبوع ولماذا؟») اعتمادًا على لقطة حية من بيانات المصنع.
+   بدون المفتاح يعمل المساعد القاعدي تلقائيًا — لا يتعطل شيء.
+7. **تقرير الرؤى الذكية** — `GET /ai/insights`
+   يجمع كل إشارات الذكاء الاصطناعي (صيانة، مخزون، جودة، طلب) في قائمة توصيات
+   واحدة مرتبة بالأولوية (🔴 حرج → 🔵 معلومة) — تقرير الصباح لمدير المصنع.
+8. **إنترنت الأشياء (MQTT)** — استقبال قراءات الحساسات مباشرة من أجهزة المصنع:
+   عرّف `ERP_MQTT_BROKER` (و`ERP_MQTT_PORT` اختياريًا) ويستمع النظام تلقائيًا للعنوان
+   `factory/machines/{id}/sensors` بحمولة JSON. جرّبه بالمحاكي: `python -m erp.iot.simulator`.
 
 ## 🚀 التشغيل
 
@@ -79,6 +89,26 @@ curl "http://localhost:8000/sales/forecast/1?days_ahead=30"
 curl -X POST http://localhost:8000/ai/assistant \
   -H "Content-Type: application/json" \
   -d '{"question": "كيف حال المخزون؟"}'
+
+# تقرير الرؤى والتوصيات المرتبة بالأولوية
+curl http://localhost:8000/ai/insights
+```
+
+## 🧠 تفعيل مساعد Claude (اختياري)
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # من https://platform.claude.com
+# اختياريًا: export ERP_CLAUDE_MODEL=claude-opus-4-8
+uvicorn erp.main:app --reload
+# الآن POST /ai/assistant يجيب بنموذج Claude على الأسئلة الحرة والمعقدة
+```
+
+## 📡 تفعيل استقبال الحساسات عبر MQTT (اختياري)
+
+```bash
+export ERP_MQTT_BROKER=localhost      # عنوان وسيط MQTT (مثل mosquitto)
+uvicorn erp.main:app &
+python -m erp.iot.simulator 20        # نشر 20 قراءة تجريبية
 ```
 
 ## 🗂️ بنية المشروع
@@ -97,7 +127,12 @@ erp/
 │   ├── predictive_maintenance.py   # الصيانة التنبؤية (Random Forest)
 │   ├── demand_forecast.py          # توقع الطلب (Linear Regression)
 │   ├── anomaly_detection.py        # كشف شذوذ الجودة (Isolation Forest)
-│   └── assistant.py                # المساعد الذكي بالعربية
+│   ├── assistant.py                # المساعد القاعدي بالعربية
+│   ├── llm_assistant.py            # مساعد Claude للأسئلة الحرة (اختياري)
+│   └── insights.py                 # تقرير الرؤى والتوصيات بالأولوية
+├── iot/
+│   ├── mqtt_ingest.py              # استقبال قراءات الحساسات عبر MQTT
+│   └── simulator.py                # محاكي حساسات للتجربة
 └── routers/
     ├── auth.py        # تسجيل الدخول وإدارة المستخدمين
     ├── dashboard.py   # لوحة التحكم + المساعد

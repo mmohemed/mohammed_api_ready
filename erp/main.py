@@ -36,6 +36,9 @@ app = FastAPI(
 def train_ai_models():
     # تدريب نموذج الصيانة التنبؤية مرة واحدة عند الإقلاع
     get_model()
+    # استقبال قراءات الحساسات عبر MQTT (يعمل فقط عند تعريف ERP_MQTT_BROKER)
+    from .iot.mqtt_ingest import start_mqtt_listener
+    start_mqtt_listener()
 
 
 app.include_router(auth.router)
@@ -67,6 +70,7 @@ def api_info():
             "production": "GET /production/orders — الإنتاج وكشف شذوذ الجودة",
             "sales": "GET /sales/orders — المبيعات وتوقع الطلب",
             "employees": "GET /employees — الموظفون",
-            "assistant": "POST /ai/assistant — المساعد الذكي بالعربية",
+            "assistant": "POST /ai/assistant — المساعد الذكي بالعربية (Claude عند تعريف ANTHROPIC_API_KEY)",
+            "insights": "GET /ai/insights — تقرير الرؤى والتوصيات المرتبة بالأولوية",
         },
     }
