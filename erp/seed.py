@@ -5,8 +5,9 @@
 import random
 from datetime import datetime, timedelta
 
+from .auth import hash_password
 from .database import Base, SessionLocal, engine
-from .models import Employee, Machine, Product, ProductionOrder, SalesOrder, SensorReading
+from .models import Employee, Machine, Product, ProductionOrder, SalesOrder, SensorReading, User
 
 
 def seed():
@@ -18,6 +19,11 @@ def seed():
             return
 
         random.seed(7)
+
+        # ---------- مستخدم افتراضي ----------
+        if db.query(User).count() == 0:
+            db.add(User(username="admin", full_name="مدير النظام",
+                        password_hash=hash_password("admin123"), role="admin"))
 
         # ---------- منتجات ----------
         products = [
@@ -112,6 +118,7 @@ def seed():
         print("✅ تم إنشاء البيانات التجريبية بنجاح:")
         print(f"   - {len(products)} منتجات، {len(machines)} آلات مع قراءات حساسات")
         print("   - 90 يومًا من المبيعات، 12 أمر إنتاج، 5 موظفين")
+        print("   - مستخدم افتراضي: admin / admin123 ⚠️ غيّر كلمة المرور في الإنتاج")
     finally:
         db.close()
 

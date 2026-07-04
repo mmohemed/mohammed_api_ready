@@ -128,6 +128,37 @@ class EmployeeOut(EmployeeCreate):
         from_attributes = True
 
 
+# ---------- المستخدمون والمصادقة ----------
+class UserCreate(BaseModel):
+    username: str
+    password: str = Field(min_length=6, description="6 أحرف على الأقل")
+    full_name: str = ""
+    role: str = Field(default="viewer", pattern="^(admin|manager|viewer)$")
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    full_name: str
+    role: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    role: str
+    username: str
+
+
 # ---------- الذكاء الاصطناعي ----------
 class AssistantQuestion(BaseModel):
     question: str = Field(description="سؤال بالعربية عن حالة المصنع")

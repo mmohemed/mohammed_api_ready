@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Factory ERP 🏭</title>
+<style>
+  :root {
+    --page:        #f9f9f7;
+    --surface:     #fcfcfb;
+    --ink:         #0b0b0b;
+    --ink-2:       #52514e;
+    --muted:       #898781;
+    --grid:        #e1e0d9;
+    --baseline:    #c3c2b7;
+    --border:      rgba(11,11,11,0.10);
+    --series-1:    #2a78d6;
+    --good:        #0ca30c;
+    --warning:     #fab219;
+    --critical:    #d03b3b;
+    --good-track:     #d9f2d9;
+    --warning-track:  #fdeecb;
+    --critical-track: #f6d8d8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page:        #0d0d0d;
+      --surface:     #1a1a19;
+      --ink:         #ffffff;
+      --ink-2:       #c3c2b7;
+      --muted:       #898781;
+      --grid:        #2c2c2a;
+      --baseline:    #383835;
+      --border:      rgba(255,255,255,0.10);
+      --series-1:    #3987e5;
+      --good-track:     #143814;
+      --warning-track:  #3d2f0a;
+      --critical-track: #3c1414;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page); color: var(--ink);
+    padding: 24px; max-width: 1100px; margin-inline: auto;
+  }
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  h1 { font-size: 22px; }
+  header .sub { color: var(--ink-2); font-size: 14px; }
+  .filters { display: flex; gap: 8px; margin: 16px 0; }
+  .filters button {
+    font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); cursor: pointer;
+  }
+  .filters button[aria-pressed="true"] { color: var(--ink); font-weight: 600; border-color: var(--baseline); }
+  .filters button[aria-pressed="true"]::before { content: "✓ "; font-weight: 700; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .tile .label { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+  .tile .value { font-size: 26px; font-weight: 600; }
+  .tile .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; margin-bottom: 4px; }
+  .card .desc { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
+  .chart-wrap { position: relative; direction: ltr; }
+  .tooltip {
+    position: absolute; pointer-events: none; display: none; direction: rtl;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); min-width: 130px;
+  }
+  .tooltip .t-date { color: var(--muted); margin-bottom: 4px; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 6px; }
+  .tooltip .t-key { width: 14px; height: 0; border-top: 2px solid var(--series-1); }
+  .tooltip .t-val { font-weight: 700; }
+  .tooltip .t-name { color: var(--ink-2); }
+  details.table-view { margin-top: 10px; font-size: 13px; }
+  details.table-view summary { color: var(--ink-2); cursor: pointer; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 13px; }
+  th { text-align: right; color: var(--ink-2); font-weight: 600; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  td.num { font-variant-numeric: tabular-nums; }
+  .machine { display: grid; grid-template-columns: minmax(140px, 1fr) auto 2fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grid); }
+  .machine:last-child { border-bottom: none; }
+  .chip { font-size: 12px; padding: 2px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--ink-2); white-space: nowrap; }
+  .meter { height: 10px; border-radius: 99px; overflow: hidden; direction: ltr; }
+  .meter > div { height: 100%; border-radius: 99px; }
+  .meter-val { font-size: 13px; font-weight: 600; min-width: 88px; }
+  .reco { grid-column: 1 / -1; font-size: 12px; color: var(--muted); margin-top: -6px; padding-bottom: 6px; }
+  .assistant { display: flex; gap: 8px; }
+  .assistant input {
+    flex: 1; font: inherit; font-size: 14px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--page); color: var(--ink);
+  }
+  .assistant button {
+    font: inherit; font-size: 14px; padding: 10px 18px; border: none; border-radius: 8px;
+    background: var(--series-1); color: #fff; cursor: pointer;
+  }
+  .answer { margin-top: 12px; font-size: 14px; line-height: 1.8; color: var(--ink-2); min-height: 20px; }
+  .status-note { font-size: 12px; color: var(--muted); }
+  svg text { font-family: inherit; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏭 Smart Factory ERP</h1>
+  <span class="sub">لوحة تحكم المصنع الذكية — <a href="/docs" style="color:var(--series-1)">وثائق الـ API</a></span>
+</header>
+
+<div class="filters" role="group" aria-label="نطاق الفترة">
+  <button data-days="7">آخر 7 أيام</button>
+  <button data-days="30" aria-pressed="true">آخر 30 يومًا</button>
+  <button data-days="90">آخر 90 يومًا</button>
+</div>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="card">
+  <h2>المبيعات اليومية (كمية الوحدات)</h2>
+  <p class="desc" id="chart-desc">إجمالي الوحدات المباعة يوميًا خلال الفترة المحددة</p>
+  <div class="chart-wrap" id="chart-wrap">
+    <svg id="sales-chart" width="100%" height="260" role="img" aria-label="مخطط المبيعات اليومية"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+  <details class="table-view">
+    <summary>عرض البيانات كجدول</summary>
+    <table><thead><tr><th>التاريخ</th><th>الكمية</th><th>الإيراد</th></tr></thead><tbody id="sales-table"></tbody></table>
+  </details>
+</div>
+
+<div class="card">
+  <h2>🤖 الصيانة التنبؤية — خطر عطل الآلات</h2>
+  <p class="desc">احتمال العطل محسوب بالذكاء الاصطناعي من آخر قراءات الحساسات</p>
+  <div id="machines"></div>
+</div>
+
+<div class="card">
+  <h2>⚠️ تنبيهات المخزون</h2>
+  <p class="desc">أصناف وصلت حدّ إعادة الطلب مع كمية الطلب المقترحة ذكيًا</p>
+  <table><thead><tr><th>الصنف</th><th>المتوفر</th><th>حد إعادة الطلب</th><th>أيام التغطية</th><th>الكمية المقترحة</th></tr></thead>
+  <tbody id="alerts-table"></tbody></table>
+  <p class="status-note" id="alerts-empty" hidden>✅ لا توجد تنبيهات — المخزون كافٍ.</p>
+</div>
+
+<div class="card">
+  <h2>💬 المساعد الذكي</h2>
+  <p class="desc">اسأل بالعربية: «كيف حال المخزون؟» — «كم إيرادات المبيعات؟» — «ما وضع الإنتاج؟»</p>
+  <div class="assistant">
+    <input id="question" placeholder="اكتب سؤالك هنا…" aria-label="سؤال المساعد الذكي">
+    <button id="ask">اسأل</button>
+  </div>
+  <p class="answer" id="answer"></p>
+</div>
+
+<script>
+"use strict";
+const fmt = n => Number(n).toLocaleString("ar-EG", { maximumFractionDigits: 1 });
+
+/* ---------- KPI tiles ---------- */
+async function loadKpis() {
+  const d = await (await fetch("/dashboard")).json();
+  const tiles = [
+    ["قيمة المخزون", fmt(d.inventory.inventory_value), d.inventory.products_count + " صنف"],
+    ["أصناف تحت حد الطلب", fmt(d.inventory.low_stock_items), "من " + d.inventory.products_count + " صنف"],
+    ["جاهزية الآلات", d.machines.availability_rate == null ? "—" : Math.round(d.machines.availability_rate * 100) + "٪", d.machines.working + " من " + d.machines.total + " تعمل"],
+    ["نسبة العيوب", (d.production.defect_rate * 100).toFixed(1) + "٪", "من " + fmt(d.production.total_produced) + " وحدة منتجة"],
+    ["إيرادات المبيعات", fmt(d.sales.total_revenue), d.sales.orders_count + " طلب بيع"],
+  ];
+  const root = document.getElementById("kpis");
+  root.replaceChildren(...tiles.map(([label, value, hint]) => {
+    const t = document.createElement("div"); t.className = "tile";
+    for (const [cls, text] of [["label", label], ["value", value], ["hint", hint]]) {
+      const el = document.createElement("div"); el.className = cls; el.textContent = text; t.appendChild(el);
+    }
+    return t;
+  }));
+}
+
+/* ---------- Sales line chart (hand-rolled SVG) ---------- */
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+let chartState = null;
+
+async function loadChart(days) {
+  const data = (await (await fetch("/dashboard/sales-timeseries?days=" + days)).json()).series;
+  const svg = document.getElementById("sales-chart");
+  svg.replaceChildren();
+  const tbody = document.getElementById("sales-table");
+  tbody.replaceChildren(...data.map(r => {
+    const tr = document.createElement("tr");
+    for (const [v, num] of [[r.date, false], [fmt(r.quantity), true], [fmt(r.revenue), true]]) {
+      const td = document.createElement("td"); if (num) td.className = "num"; td.textContent = v; tr.appendChild(td);
+    }
+    return tr;
+  }));
+  if (!data.length) { chartState = null; return; }
+
+  const css = getComputedStyle(document.documentElement);
+  const C = name => css.getPropertyValue(name).trim();
+  const W = svg.clientWidth || 900, H = 260, m = { top: 16, right: 56, bottom: 26, left: 40 };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const ys = data.map(r => r.quantity);
+  const yMaxRaw = Math.max(...ys);
+  const step = Math.pow(10, Math.floor(Math.log10(yMaxRaw || 1)));
+  const yMax = Math.ceil(yMaxRaw / step) * step || 1;
+  const x = i => m.left + (data.length === 1 ? 0.5 : i / (data.length - 1)) * (W - m.left - m.right);
+  const y = v => H - m.bottom - (v / yMax) * (H - m.top - m.bottom);
+
+  // gridlines + y ticks (clean numbers)
+  for (let i = 0; i <= 4; i++) {
+    const v = yMax * i / 4, yy = y(v);
+    svg.appendChild(el("line", { x1: m.left, x2: W - m.right, y1: yy, y2: yy, stroke: C("--grid"), "stroke-width": 1 }));
+    const t = el("text", { x: m.left - 6, y: yy + 4, "text-anchor": "end", "font-size": 11, fill: C("--muted") });
+    t.textContent = v.toLocaleString("en"); svg.appendChild(t);
+  }
+  svg.appendChild(el("line", { x1: m.left, x2: W - m.right, y1: y(0), y2: y(0), stroke: C("--baseline"), "stroke-width": 1 }));
+  // x labels: first, middle, last
+  [0, Math.floor((data.length - 1) / 2), data.length - 1].forEach(i => {
+    const t = el("text", { x: x(i), y: H - 8, "text-anchor": "middle", "font-size": 11, fill: C("--muted") });
+    t.textContent = data[i].date.slice(5); svg.appendChild(t);
+  });
+
+  const line = data.map((r, i) => (i ? "L" : "M") + x(i) + " " + y(r.quantity)).join(" ");
+  svg.appendChild(el("path", { d: line + ` L ${x(data.length - 1)} ${y(0)} L ${x(0)} ${y(0)} Z`, fill: C("--series-1"), opacity: 0.1 }));
+  svg.appendChild(el("path", { d: line, fill: "none", stroke: C("--series-1"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+  // end marker: surface ring + dot, with direct label at the endpoint
+  const li = data.length - 1;
+  svg.appendChild(el("circle", { cx: x(li), cy: y(data[li].quantity), r: 6, fill: C("--surface") }));
+  svg.appendChild(el("circle", { cx: x(li), cy: y(data[li].quantity), r: 4, fill: C("--series-1") }));
+  const endLabel = el("text", { x: x(li) + 8, y: y(data[li].quantity) + 4, "font-size": 12, "font-weight": 700, fill: C("--ink") });
+  endLabel.textContent = data[li].quantity.toLocaleString("en"); svg.appendChild(endLabel);
+
+  // crosshair (snaps to nearest X) + tooltip listing the series value
+  const cross = el("line", { y1: m.top, y2: H - m.bottom, stroke: C("--baseline"), "stroke-width": 1, visibility: "hidden" });
+  const hoverRing = el("circle", { r: 6, fill: C("--surface"), visibility: "hidden" });
+  const hoverDot = el("circle", { r: 4, fill: C("--series-1"), visibility: "hidden" });
+  svg.append(cross, hoverRing, hoverDot);
+  chartState = { data, x, y, W, m, cross, hoverRing, hoverDot };
+}
+
+const wrap = document.getElementById("chart-wrap"), tip = document.getElementById("tooltip");
+wrap.addEventListener("pointermove", ev => {
+  if (!chartState) return;
+  const { data, x, y, W, m, cross, hoverRing, hoverDot } = chartState;
+  const rect = wrap.getBoundingClientRect();
+  const px = (ev.clientX - rect.left) * (W / rect.width);
+  let best = 0;
+  for (let i = 1; i < data.length; i++) if (Math.abs(x(i) - px) < Math.abs(x(best) - px)) best = i;
+  const cx = x(best), cy = y(data[best].quantity);
+  cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); cross.setAttribute("visibility", "visible");
+  hoverRing.setAttribute("cx", cx); hoverRing.setAttribute("cy", cy); hoverRing.setAttribute("visibility", "visible");
+  hoverDot.setAttribute("cx", cx); hoverDot.setAttribute("cy", cy); hoverDot.setAttribute("visibility", "visible");
+  tip.replaceChildren();
+  const d1 = document.createElement("div"); d1.className = "t-date"; d1.textContent = data[best].date; tip.appendChild(d1);
+  const row = document.createElement("div"); row.className = "t-row";
+  const key = document.createElement("span"); key.className = "t-key";
+  const val = document.createElement("span"); val.className = "t-val"; val.textContent = fmt(data[best].quantity);
+  const name = document.createElement("span"); name.className = "t-name"; name.textContent = "وحدة";
+  row.append(key, val, name); tip.appendChild(row);
+  const r2 = document.createElement("div"); r2.className = "t-row";
+  const v2 = document.createElement("span"); v2.className = "t-val"; v2.textContent = fmt(data[best].revenue);
+  const n2 = document.createElement("span"); n2.className = "t-name"; n2.textContent = "إيراد";
+  r2.append(v2, n2); tip.appendChild(r2);
+  tip.style.display = "block";
+  const tx = cx / (W / rect.width);
+  tip.style.left = Math.min(tx + 12, rect.width - 150) + "px";
+  tip.style.top = "12px";
+});
+wrap.addEventListener("pointerleave", () => {
+  tip.style.display = "none";
+  if (chartState) for (const k of ["cross", "hoverRing", "hoverDot"]) chartState[k].setAttribute("visibility", "hidden");
+});
+
+/* ---------- Machines risk meters ---------- */
+async function loadMachines() {
+  const { machines } = await (await fetch("/machines/risk-overview")).json();
+  const root = document.getElementById("machines");
+  root.replaceChildren(...machines.map(mch => {
+    const row = document.createElement("div"); row.className = "machine";
+    const name = document.createElement("div"); name.textContent = mch.name; name.style.fontWeight = "600";
+    const chip = document.createElement("span"); chip.className = "chip";
+    chip.textContent = mch.status === "working" ? "▶ تعمل" : mch.status === "maintenance" ? "🔧 صيانة" : "⏸ متوقفة";
+    const meter = document.createElement("div"); meter.className = "meter";
+    const fill = document.createElement("div");
+    const val = document.createElement("div"); val.className = "meter-val";
+    const p = mch.failure_probability;
+    if (p == null) {
+      meter.style.background = "var(--grid)"; fill.style.width = "0";
+      val.textContent = "لا قراءات";
+    } else {
+      const sev = p >= 0.7 ? ["--critical", "--critical-track", "🔴"] : p >= 0.4 ? ["--warning", "--warning-track", "🟡"] : ["--good", "--good-track", "🟢"];
+      fill.style.background = `var(${sev[0]})`; meter.style.background = `var(${sev[1]})`;
+      fill.style.width = Math.round(p * 100) + "%";
+      val.textContent = sev[2] + " " + Math.round(p * 100) + "٪ — " + mch.risk_level;
+    }
+    meter.appendChild(fill);
+    const reco = document.createElement("div"); reco.className = "reco"; reco.textContent = mch.recommendation || "";
+    row.append(name, chip, meter, val, reco);
+    return row;
+  }));
+}
+
+/* ---------- Low-stock alerts ---------- */
+async function loadAlerts() {
+  const { alerts } = await (await fetch("/inventory/alerts")).json();
+  const tbody = document.getElementById("alerts-table");
+  document.getElementById("alerts-empty").hidden = alerts.length > 0;
+  tbody.replaceChildren(...alerts.map(a => {
+    const tr = document.createElement("tr");
+    for (const [v, num] of [[a.name, false], [fmt(a.quantity), true], [fmt(a.reorder_point), true],
+                            [a.days_of_stock_remaining == null ? "—" : fmt(a.days_of_stock_remaining), true],
+                            [fmt(a.suggested_order_quantity), true]]) {
+      const td = document.createElement("td"); if (num) td.className = "num"; td.textContent = v; tr.appendChild(td);
+    }
+    return tr;
+  }));
+}
+
+/* ---------- Assistant ---------- */
+async function ask() {
+  const q = document.getElementById("question").value.trim();
+  if (!q) return;
+  const out = document.getElementById("answer");
+  out.textContent = "…";
+  try {
+    const res = await fetch("/ai/assistant", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q }),
+    });
+    out.textContent = (await res.json()).answer;
+  } catch { out.textContent = "تعذر الاتصال بالخادم."; }
+}
+document.getElementById("ask").addEventListener("click", ask);
+document.getElementById("question").addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
+
+/* ---------- Filters scope the chart ---------- */
+document.querySelectorAll(".filters button").forEach(btn => btn.addEventListener("click", () => {
+  document.querySelectorAll(".filters button").forEach(b => b.setAttribute("aria-pressed", b === btn));
+  loadChart(Number(btn.dataset.days));
+}));
+
+loadKpis(); loadChart(30); loadMachines(); loadAlerts();
+</script>
+</body>
+</html>

@@ -6,13 +6,15 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..ai.demand_forecast import forecast_demand, reorder_suggestion
+from ..auth import require_writer
 from ..database import get_db
 
 router = APIRouter(prefix="/inventory", tags=["المخزون"])
 
 
 @router.post("/products", response_model=schemas.ProductOut)
-def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
+def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db),
+                 _: object = Depends(require_writer)):
     if db.query(models.Product).filter_by(sku=product.sku).first():
         raise HTTPException(status_code=400, detail="يوجد منتج بنفس رمز SKU")
     row = models.Product(**product.model_dump())
@@ -36,7 +38,8 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/products/{product_id}/adjust", response_model=schemas.ProductOut)
-def adjust_stock(product_id: int, adjustment: schemas.StockAdjust, db: Session = Depends(get_db)):
+def adjust_stock(product_id: int, adjustment: schemas.StockAdjust, db: Session = Depends(get_db),
+                 _: object = Depends(require_writer)):
     product = db.get(models.Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="المنتج غير موجود")

@@ -6,13 +6,15 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..ai.demand_forecast import forecast_demand
+from ..auth import require_writer
 from ..database import get_db
 
 router = APIRouter(prefix="/sales", tags=["المبيعات"])
 
 
 @router.post("/orders", response_model=schemas.SalesOrderOut)
-def create_sales_order(order: schemas.SalesOrderCreate, db: Session = Depends(get_db)):
+def create_sales_order(order: schemas.SalesOrderCreate, db: Session = Depends(get_db),
+                 _: object = Depends(require_writer)):
     product = db.get(models.Product, order.product_id)
     if not product:
         raise HTTPException(status_code=404, detail="المنتج غير موجود")

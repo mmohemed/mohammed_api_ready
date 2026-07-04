@@ -54,6 +54,33 @@ def dashboard(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/dashboard/sales-timeseries")
+def sales_timeseries(days: int = 30, db: Session = Depends(get_db)):
+    """المبيعات اليومية (كمية وإيراد) لآخر N يوم — تغذي مخطط اللوحة."""
+    from datetime import datetime, timedelta
+
+    days = max(1, min(days, 365))
+    since = datetime.utcnow() - timedelta(days=days)
+    orders = (
+        db.query(models.SalesOrder)
+        .filter(models.SalesOrder.status != "cancelled")
+        .filter(models.SalesOrder.ordered_at >= since)
+        .all()
+    )
+    daily: dict = {}
+    for o in orders:
+        day = o.ordered_at.date().isoformat()
+        entry = daily.setdefault(day, {"quantity": 0.0, "revenue": 0.0})
+        entry["quantity"] += o.quantity
+        entry["revenue"] += o.quantity * o.unit_price
+
+    series = [
+        {"date": day, "quantity": round(v["quantity"], 1), "revenue": round(v["revenue"], 2)}
+        for day, v in sorted(daily.items())
+    ]
+    return {"days": days, "series": series}
+
+
 @router.post("/ai/assistant")
 def ai_assistant(body: schemas.AssistantQuestion, db: Session = Depends(get_db)):
     """🤖 اسأل المساعد الذكي بالعربية عن أي شيء في المصنع.

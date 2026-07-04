@@ -9,11 +9,16 @@
 # التشغيل: uvicorn erp.main:app --reload
 # الوثائق التفاعلية: http://localhost:8000/docs
 # =========================================
+import os
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from .ai.predictive_maintenance import get_model
 from .database import Base, engine
-from .routers import dashboard, employees, inventory, machines, production, sales
+from .routers import auth, dashboard, employees, inventory, machines, production, sales
+
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 Base.metadata.create_all(bind=engine)
 
@@ -33,6 +38,7 @@ def train_ai_models():
     get_model()
 
 
+app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(inventory.router)
 app.include_router(machines.router)
@@ -41,11 +47,19 @@ app.include_router(sales.router)
 app.include_router(employees.router)
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
+    """لوحة التحكم المرئية"""
+    return FileResponse(os.path.join(STATIC_DIR, "dashboard.html"))
+
+
+@app.get("/api/info")
+def api_info():
     return {
         "message": "مرحبًا بك في Smart Factory ERP 🏭 — نظام ERP ذكي للمصانع",
+        "dashboard": "/",
         "docs": "/docs",
+        "auth": "POST /auth/login — تسجيل الدخول (عمليات الكتابة تتطلب دور admin أو manager)",
         "modules": {
             "dashboard": "GET /dashboard — مؤشرات المصنع",
             "inventory": "GET /inventory/products — المخزون والتنبيهات الذكية",

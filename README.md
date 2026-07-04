@@ -6,6 +6,8 @@
 
 | الوحدة | الوصف |
 |---|---|
+| 🖥️ لوحة تحكم مرئية | واجهة ويب عربية (RTL) على `/`: مؤشرات KPI، مخطط مبيعات تفاعلي، عدّادات خطر الآلات، تنبيهات المخزون، ومحادثة المساعد الذكي — بدون أي مكتبات خارجية |
+| 🔐 المستخدمون والصلاحيات | تسجيل دخول برموز موقّعة، أدوار: `admin` / `manager` (قراءة وكتابة) / `viewer` (قراءة فقط) |
 | 📦 المخزون | إدارة المنتجات والكميات، تنبيهات نفاد المخزون، اقتراحات إعادة طلب ذكية |
 | ⚙️ الآلات والصيانة | تسجيل الآلات وقراءات الحساسات (حرارة، اهتزاز، ضغط، ساعات تشغيل) |
 | 🏗️ الإنتاج والجودة | أوامر إنتاج، تسجيل المنتج والمعيب، إضافة الصافي للمخزون تلقائيًا |
@@ -38,8 +40,27 @@ python -m erp.seed
 # 3) تشغيل الخادم
 uvicorn erp.main:app --reload
 
-# الوثائق التفاعلية (Swagger)
-# http://localhost:8000/docs
+# لوحة التحكم المرئية:        http://localhost:8000/
+# الوثائق التفاعلية (Swagger): http://localhost:8000/docs
+```
+
+## 🔐 المصادقة والصلاحيات
+
+- عمليات **القراءة** مفتوحة، وعمليات **الكتابة** (إضافة/تعديل/حذف) تتطلب تسجيل دخول بدور `admin` أو `manager`.
+- بيانات seed تنشئ مستخدمًا افتراضيًا: `admin` / `admin123` — **غيّره في الإنتاج**، وعرّف مفتاح التوقيع عبر متغير البيئة `ERP_SECRET_KEY`.
+- بدون seed: أول استدعاء لـ `POST /auth/register` ينشئ مدير النظام (Bootstrap).
+
+```bash
+# تسجيل الدخول والحصول على رمز
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
+
+# استخدام الرمز في عمليات الكتابة
+curl -X POST http://localhost:8000/inventory/products \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "منتج جديد", "sku": "NEW-1", "quantity": 100}'
 ```
 
 ## 🧪 أمثلة سريعة
@@ -68,13 +89,17 @@ erp/
 ├── database.py        # إعداد SQLite + SQLAlchemy
 ├── models.py          # جداول قاعدة البيانات
 ├── schemas.py         # مخططات Pydantic
+├── auth.py            # المصادقة والصلاحيات (PBKDF2 + HMAC tokens)
 ├── seed.py            # بيانات تجريبية
+├── static/
+│   └── dashboard.html # لوحة التحكم المرئية (عربية RTL، بدون مكتبات خارجية)
 ├── ai/
 │   ├── predictive_maintenance.py   # الصيانة التنبؤية (Random Forest)
 │   ├── demand_forecast.py          # توقع الطلب (Linear Regression)
 │   ├── anomaly_detection.py        # كشف شذوذ الجودة (Isolation Forest)
 │   └── assistant.py                # المساعد الذكي بالعربية
 └── routers/
+    ├── auth.py        # تسجيل الدخول وإدارة المستخدمين
     ├── dashboard.py   # لوحة التحكم + المساعد
     ├── inventory.py   # المخزون
     ├── machines.py    # الآلات والصيانة

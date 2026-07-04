@@ -9,6 +9,18 @@ from sqlalchemy.orm import relationship
 from .database import Base
 
 
+class User(Base):
+    """مستخدمو النظام: admin / manager / viewer"""
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    full_name = Column(String, default="")
+    password_hash = Column(String, nullable=False)
+    role = Column(String, default="viewer")          # admin / manager / viewer
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Product(Base):
     """المنتجات / أصناف المخزون"""
     __tablename__ = "products"
