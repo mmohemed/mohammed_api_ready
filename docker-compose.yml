@@ -1,0 +1,18 @@
+# Smart Factory ERP — التشغيل: docker compose up
+services:
+  erp:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - erp-data:/app/data
+    environment:
+      - ERP_DATABASE_URL=sqlite:////app/data/erp.db
+      # فعّل ما تحتاجه:
+      # - ERP_SECRET_KEY=ضع-مفتاحًا-سريًا-قويًا-هنا
+      # - ANTHROPIC_API_KEY=sk-ant-...     # مساعد Claude للأسئلة الحرة
+      # - ERP_MQTT_BROKER=mqtt-broker      # استقبال الحساسات عبر MQTT
+    restart: unless-stopped
+
+volumes:
+  erp-data:
