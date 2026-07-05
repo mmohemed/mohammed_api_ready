@@ -12,11 +12,15 @@ import os
 import secrets
 import time
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from . import models
 from .database import get_db
+
+# مخطط الأمان: يجعل زر Authorize يظهر في صفحة /docs
+bearer_scheme = HTTPBearer(auto_error=False, description="الصق access_token من رد /auth/login")
 
 # ⚠️ في الإنتاج عرّف ERP_SECRET_KEY في متغيرات البيئة
 SECRET_KEY = os.environ.get("ERP_SECRET_KEY", "dev-secret-change-me").encode()
@@ -72,18 +76,33 @@ def decode_token(token: str) -> dict:
 
 
 # ---------- Dependencies ----------
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> models.User:
+    if credentials is None:
         raise HTTPException(
             status_code=401,
             detail="مطلوب تسجيل الدخول: أرسل الرمز في ترويسة Authorization: Bearer <token>",
         )
-    payload = decode_token(auth.removeprefix("Bearer ").strip())
+    payload = decode_token(credentials.credentials.strip())
     user = db.get(models.User, payload["uid"])
     if not user:
         raise HTTPException(status_code=401, detail="المستخدم غير موجود")
     return user
+
+
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> models.User | None:
+    """مثل get_current_user لكن يعيد None بدل 401 عند غياب الرمز.
+
+    يُستخدم في المسارات التي تتصرف باختلاف وجود مستخدم (مثل Bootstrap أول admin)."""
+    if credentials is None:
+        return None
+    payload = decode_token(credentials.credentials.strip())
+    return db.get(models.User, payload["uid"])
 
 
 def require_writer(user: models.User = Depends(get_current_user)) -> models.User:

@@ -1,11 +1,18 @@
 # =========================================
 # تسجيل الدخول وإدارة المستخدمين
 # =========================================
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..auth import create_token, get_current_user, hash_password, require_admin, verify_password
+from ..auth import (
+    create_token,
+    get_current_user,
+    get_optional_user,
+    hash_password,
+    require_admin,
+    verify_password,
+)
 from ..database import get_db
 
 router = APIRouter(prefix="/auth", tags=["المصادقة والمستخدمون"])
@@ -24,7 +31,11 @@ def login(body: schemas.LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/register", response_model=schemas.UserOut)
-def register(body: schemas.UserCreate, request: Request, db: Session = Depends(get_db)):
+def register(
+    body: schemas.UserCreate,
+    db: Session = Depends(get_db),
+    current: models.User | None = Depends(get_optional_user),
+):
     """إنشاء مستخدم.
 
     - أول مستخدم في النظام يُنشأ بدون مصادقة ويصبح admin تلقائيًا (Bootstrap).
@@ -32,7 +43,8 @@ def register(body: schemas.UserCreate, request: Request, db: Session = Depends(g
     """
     users_exist = db.query(models.User).count() > 0
     if users_exist:
-        current = get_current_user(request, db)
+        if current is None:
+            raise HTTPException(status_code=401, detail="مطلوب تسجيل الدخول بحساب admin")
         if current.role != "admin":
             raise HTTPException(status_code=403, detail="إنشاء المستخدمين لمدير النظام فقط")
     if db.query(models.User).filter_by(username=body.username).first():
