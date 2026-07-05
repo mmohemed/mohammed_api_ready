@@ -52,7 +52,13 @@ app.include_router(employees.router)
 
 @app.get("/", include_in_schema=False)
 def root():
-    """لوحة التحكم المرئية"""
+    """تطبيق التشغيل الكامل: تسجيل دخول + إدارة كل الأقسام"""
+    return FileResponse(os.path.join(STATIC_DIR, "app.html"))
+
+
+@app.get("/classic", include_in_schema=False)
+def classic_dashboard():
+    """لوحة العرض القديمة (قراءة فقط)"""
     return FileResponse(os.path.join(STATIC_DIR, "dashboard.html"))
 
 

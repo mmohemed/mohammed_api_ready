@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Factory ERP 🏭</title>
+<style>
+  :root {
+    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e;
+    --muted: #898781; --grid: #e1e0d9; --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10); --series-1: #2a78d6;
+    --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+    --good-track: #d9f2d9; --warning-track: #fdeecb; --critical-track: #f6d8d8;
+    --danger-bg: #fbeaea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+      --muted: #898781; --grid: #2c2c2a; --baseline: #383835;
+      --border: rgba(255,255,255,0.10); --series-1: #3987e5;
+      --good-track: #143814; --warning-track: #3d2f0a; --critical-track: #3c1414;
+      --danger-bg: #3c1414;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--ink); }
+
+  /* ---------- الترويسة والتبويبات ---------- */
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 10px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 20;
+  }
+  header h1 { font-size: 17px; white-space: nowrap; }
+  nav { display: flex; gap: 2px; flex-wrap: wrap; flex: 1; }
+  nav button {
+    font: inherit; font-size: 13px; padding: 7px 13px; border: none; background: none;
+    color: var(--ink-2); cursor: pointer; border-radius: 8px;
+  }
+  nav button[aria-current="true"] { background: var(--page); color: var(--ink); font-weight: 700; }
+  .userbox { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .userbox .chip { padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--ink-2); }
+
+  main { max-width: 1150px; margin: 0 auto; padding: 20px; }
+
+  /* ---------- أزرار ---------- */
+  .btn {
+    font: inherit; font-size: 13px; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  }
+  .btn.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+  .btn.danger { background: var(--danger-bg); border-color: var(--critical); color: var(--critical); }
+  .btn.small { padding: 4px 10px; font-size: 12px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ---------- بطاقات وجداول ---------- */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin-bottom: 4px; }
+  .card .desc { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar h2 { font-size: 17px; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th { text-align: right; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
+  th, td { padding: 8px; border-bottom: 1px solid var(--grid); }
+  td.num { font-variant-numeric: tabular-nums; }
+  td.actions { white-space: nowrap; display: flex; gap: 6px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 16px 0; text-align: center; }
+  .badge { font-size: 12px; padding: 2px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--ink-2); white-space: nowrap; }
+  .badge.low { background: var(--warning-track); border-color: var(--warning); color: var(--ink); }
+
+  /* ---------- KPI ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .tile .label { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+  .tile .value { font-size: 25px; font-weight: 600; }
+  .tile .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ---------- مخطط ---------- */
+  .filters { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filters button {
+    font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-2); cursor: pointer;
+  }
+  .filters button[aria-pressed="true"] { color: var(--ink); font-weight: 600; border-color: var(--baseline); }
+  .filters button[aria-pressed="true"]::before { content: "✓ "; font-weight: 700; }
+  .chart-wrap { position: relative; direction: ltr; }
+  .tooltip {
+    position: absolute; pointer-events: none; display: none; direction: rtl;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); min-width: 130px;
+  }
+  .tooltip .t-date { color: var(--muted); margin-bottom: 4px; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 6px; }
+  .tooltip .t-key { width: 14px; height: 0; border-top: 2px solid var(--series-1); }
+  .tooltip .t-val { font-weight: 700; }
+  .tooltip .t-name { color: var(--ink-2); }
+  details.table-view { margin-top: 10px; font-size: 13px; }
+  details.table-view summary { color: var(--ink-2); cursor: pointer; }
+  svg text { font-family: inherit; }
+
+  /* ---------- عدّادات الآلات ---------- */
+  .machine-row { display: grid; grid-template-columns: minmax(130px, 1fr) auto 2fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--grid); }
+  .machine-row:last-child { border-bottom: none; }
+  .meter { height: 10px; border-radius: 99px; overflow: hidden; direction: ltr; }
+  .meter > div { height: 100%; border-radius: 99px; }
+  .meter-val { font-size: 13px; font-weight: 600; min-width: 88px; }
+  .reco { grid-column: 1 / -1; font-size: 12px; color: var(--muted); margin-top: -6px; padding-bottom: 6px; }
+
+  /* ---------- المساعد ---------- */
+  .assistant { display: flex; gap: 8px; }
+  .assistant input { flex: 1; }
+  .answer { margin-top: 12px; font-size: 14px; line-height: 1.8; color: var(--ink-2); min-height: 20px; }
+
+  /* ---------- نماذج الإدخال ---------- */
+  input, select {
+    font: inherit; font-size: 14px; padding: 9px 12px; width: 100%;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--page); color: var(--ink);
+  }
+  label { font-size: 13px; color: var(--ink-2); display: block; margin-bottom: 4px; }
+  .field { margin-bottom: 12px; }
+  .modal-back {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
+    align-items: center; justify-content: center; z-index: 50; padding: 16px;
+  }
+  .modal-back.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 14px; padding: 22px; width: 100%; max-width: 420px;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+  }
+  .modal h3 { font-size: 16px; margin-bottom: 16px; }
+  .modal .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  .modal .error { color: var(--critical); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* ---------- إشعارات ---------- */
+  #toasts { position: fixed; bottom: 18px; right: 18px; z-index: 99; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--surface); border: 1px solid var(--border); border-right: 4px solid var(--good);
+    border-radius: 10px; padding: 10px 16px; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    max-width: 340px;
+  }
+  .toast.err { border-right-color: var(--critical); }
+
+  .insights-list { list-style: none; }
+  .insights-list li { padding: 10px 0; border-bottom: 1px solid var(--grid); font-size: 14px; }
+  .insights-list li:last-child { border-bottom: none; }
+  .insights-list .rec { font-size: 13px; color: var(--ink-2); margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏭 Smart Factory ERP</h1>
+  <nav id="nav"></nav>
+  <div class="userbox" id="userbox"></div>
+</header>
+
+<main id="view"></main>
+
+<div class="modal-back" id="modal-back">
+  <div class="modal" id="modal"></div>
+</div>
+<div id="toasts"></div>
+
+<script>
+"use strict";
+/* =========================================================
+   Smart Factory ERP — واجهة التشغيل الكاملة
+   ========================================================= */
+const fmt = n => Number(n).toLocaleString("ar-EG", { maximumFractionDigits: 1 });
+const state = {
+  token: localStorage.getItem("erp_token") || null,
+  username: localStorage.getItem("erp_username") || null,
+  role: localStorage.getItem("erp_role") || null,
+};
+const canWrite = () => ["admin", "manager"].includes(state.role);
+
+/* ---------- استدعاء الـ API ---------- */
+async function api(path, { method = "GET", body } = {}) {
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (state.token) headers["Authorization"] = "Bearer " + state.token;
+  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  let data = null;
+  try { data = await res.json(); } catch { /* لا جسم */ }
+  if (res.status === 401 && path !== "/auth/login") {
+    logout(false);
+    openLogin("انتهت الجلسة أو تحتاج لتسجيل الدخول لهذه العملية");
+    throw new Error(data?.detail || "مطلوب تسجيل الدخول");
+  }
+  if (!res.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "حدث خطأ غير متوقع");
+  return data;
+}
+
+/* ---------- إشعارات ---------- */
+function toast(message, isError = false) {
+  const el = document.createElement("div");
+  el.className = "toast" + (isError ? " err" : "");
+  el.textContent = message;
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+/* ---------- نافذة نموذج عامة ---------- */
+const modalBack = document.getElementById("modal-back");
+const modalBox = document.getElementById("modal");
+
+function closeModal() { modalBack.classList.remove("open"); modalBox.replaceChildren(); }
+modalBack.addEventListener("click", e => { if (e.target === modalBack) closeModal(); });
+
+/* fields: [{name, label, type: text|number|password|select, value, required, options: [{value,label}], step}] */
+function showForm({ title, fields, submitLabel = "حفظ", onSubmit }) {
+  modalBox.replaceChildren();
+  const h = document.createElement("h3"); h.textContent = title; modalBox.appendChild(h);
+  const form = document.createElement("form");
+  const inputs = {};
+  for (const f of fields) {
+    const wrap = document.createElement("div"); wrap.className = "field";
+    const label = document.createElement("label"); label.textContent = f.label; wrap.appendChild(label);
+    let input;
+    if (f.type === "select") {
+      input = document.createElement("select");
+      for (const opt of f.options) {
+        const o = document.createElement("option");
+        o.value = opt.value; o.textContent = opt.label;
+        if (String(f.value) === String(opt.value)) o.selected = true;
+        input.appendChild(o);
+      }
+    } else {
+      input = document.createElement("input");
+      input.type = f.type || "text";
+      if (f.type === "number") input.step = f.step || "any";
+      if (f.value !== undefined && f.value !== null) input.value = f.value;
+      if (f.placeholder) input.placeholder = f.placeholder;
+    }
+    if (f.required) input.required = true;
+    inputs[f.name] = input;
+    wrap.appendChild(input);
+    form.appendChild(wrap);
+  }
+  const errBox = document.createElement("div"); errBox.className = "error";
+  const row = document.createElement("div"); row.className = "row";
+  const cancel = document.createElement("button");
+  cancel.type = "button"; cancel.className = "btn"; cancel.textContent = "إلغاء";
+  cancel.addEventListener("click", closeModal);
+  const submit = document.createElement("button");
+  submit.type = "submit"; submit.className = "btn primary"; submit.textContent = submitLabel;
+  row.append(cancel, submit);
+  form.append(errBox, row);
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    submit.disabled = true; errBox.textContent = "";
+    const values = {};
+    for (const f of fields) {
+      const raw = inputs[f.name].value;
+      values[f.name] = f.type === "number" ? (raw === "" ? null : Number(raw)) : raw;
+    }
+    try { await onSubmit(values); closeModal(); }
+    catch (err) { errBox.textContent = err.message; submit.disabled = false; }
+  });
+  modalBox.appendChild(form);
+  modalBack.classList.add("open");
+  const first = Object.values(inputs)[0]; if (first) first.focus();
+}
+
+function confirmDialog(message, onConfirm) {
+  modalBox.replaceChildren();
+  const h = document.createElement("h3"); h.textContent = "تأكيد";
+  const p = document.createElement("p"); p.textContent = message; p.style.fontSize = "14px";
+  const errBox = document.createElement("div"); errBox.className = "error";
+  const row = document.createElement("div"); row.className = "row";
+  const cancel = document.createElement("button"); cancel.className = "btn"; cancel.textContent = "إلغاء";
+  cancel.addEventListener("click", closeModal);
+  const ok = document.createElement("button"); ok.className = "btn danger"; ok.textContent = "نعم، احذف";
+  ok.addEventListener("click", async () => {
+    ok.disabled = true;
+    try { await onConfirm(); closeModal(); }
+    catch (err) { errBox.textContent = err.message; ok.disabled = false; }
+  });
+  row.append(cancel, ok);
+  modalBox.append(h, p, errBox, row);
+  modalBack.classList.add("open");
+}
+
+/* ---------- تسجيل الدخول ---------- */
+function openLogin(note) {
+  showForm({
+    title: "تسجيل الدخول" + (note ? " — " + note : ""),
+    fields: [
+      { name: "username", label: "اسم المستخدم", required: true, placeholder: "admin" },
+      { name: "password", label: "كلمة المرور", type: "password", required: true },
+    ],
+    submitLabel: "دخول",
+    onSubmit: async v => {
+      const data = await api("/auth/login", { method: "POST", body: v });
+      state.token = data.access_token; state.username = data.username; state.role = data.role;
+      localStorage.setItem("erp_token", state.token);
+      localStorage.setItem("erp_username", state.username);
+      localStorage.setItem("erp_role", state.role);
+      renderUserbox(); renderNav(); render();
+      toast("مرحبًا " + state.username + " 👋 (صلاحية: " + state.role + ")");
+    },
+  });
+}
+
+function logout(notify = true) {
+  state.token = state.username = state.role = null;
+  localStorage.removeItem("erp_token");
+  localStorage.removeItem("erp_username");
+  localStorage.removeItem("erp_role");
+  renderUserbox(); renderNav();
+  if (notify) { toast("تم تسجيل الخروج"); render(); }
+}
+
+function renderUserbox() {
+  const box = document.getElementById("userbox");
+  box.replaceChildren();
+  if (state.token) {
+    const chip = document.createElement("span"); chip.className = "chip";
+    chip.textContent = "👤 " + state.username + " (" + state.role + ")";
+    const btn = document.createElement("button"); btn.className = "btn small"; btn.textContent = "خروج";
+    btn.addEventListener("click", () => logout());
+    box.append(chip, btn);
+  } else {
+    const btn = document.createElement("button"); btn.className = "btn primary small"; btn.textContent = "تسجيل الدخول";
+    btn.addEventListener("click", () => openLogin());
+    box.appendChild(btn);
+  }
+}
+
+/* ---------- أدوات بناء الجداول ---------- */
+function buildTable(headers, rows, buildCells) {
+  const wrap = document.createElement("div"); wrap.className = "table-wrap";
+  const table = document.createElement("table");
+  const thead = document.createElement("thead"); const trh = document.createElement("tr");
+  for (const htxt of headers) { const th = document.createElement("th"); th.textContent = htxt; trh.appendChild(th); }
+  thead.appendChild(trh); table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  for (const row of rows) tbody.appendChild(buildCells(row));
+  table.appendChild(tbody); wrap.appendChild(table);
+  if (!rows.length) {
+    const empty = document.createElement("div"); empty.className = "empty";
+    empty.textContent = "لا توجد بيانات بعد";
+    wrap.appendChild(empty);
+  }
+  return wrap;
+}
+function td(text, cls) { const cell = document.createElement("td"); if (cls) cell.className = cls; cell.textContent = text; return cell; }
+function actionBtn(label, cls, handler) {
+  const b = document.createElement("button"); b.className = "btn small " + (cls || "");
+  b.textContent = label; b.addEventListener("click", handler); return b;
+}
+function toolbar(title, buttons = []) {
+  const bar = document.createElement("div"); bar.className = "toolbar";
+  const h = document.createElement("h2"); h.textContent = title; bar.appendChild(h);
+  const group = document.createElement("div"); group.style.display = "flex"; group.style.gap = "8px";
+  for (const b of buttons) group.appendChild(b);
+  bar.appendChild(group);
+  return bar;
+}
+function writeGate(container) {
+  if (canWrite()) return false;
+  const note = document.createElement("p"); note.className = "desc";
+  note.textContent = state.token
+    ? "صلاحيتك للعرض فقط (viewer) — أزرار الإضافة والتعديل معطلة."
+    : "سجّل الدخول (زر أعلى الصفحة) لتتمكن من الإضافة والتعديل والحذف.";
+  container.appendChild(note);
+  return true;
+}
+
+/* =========================================================
+   شاشة: لوحة التحكم
+   ========================================================= */
+async function viewDashboard(container) {
+  /* KPI */
+  const kpis = document.createElement("div"); kpis.className = "kpis"; container.appendChild(kpis);
+  const d = await api("/dashboard");
+  const tiles = [
+    ["قيمة المخزون", fmt(d.inventory.inventory_value), d.inventory.products_count + " صنف"],
+    ["أصناف تحت حد الطلب", fmt(d.inventory.low_stock_items), ""],
+    ["جاهزية الآلات", d.machines.availability_rate == null ? "—" : Math.round(d.machines.availability_rate * 100) + "٪", d.machines.working + " من " + d.machines.total + " تعمل"],
+    ["نسبة العيوب", (d.production.defect_rate * 100).toFixed(1) + "٪", ""],
+    ["إيرادات المبيعات", fmt(d.sales.total_revenue), d.sales.orders_count + " طلب"],
+  ];
+  for (const [label, value, hint] of tiles) {
+    const t = document.createElement("div"); t.className = "tile";
+    for (const [cls, text] of [["label", label], ["value", value], ["hint", hint]]) {
+      const el = document.createElement("div"); el.className = cls; el.textContent = text; t.appendChild(el);
+    }
+    kpis.appendChild(t);
+  }
+
+  /* مخطط المبيعات */
+  const chartCard = document.createElement("div"); chartCard.className = "card";
+  chartCard.appendChild(Object.assign(document.createElement("h2"), { textContent: "المبيعات اليومية (كمية الوحدات)" }));
+  const filters = document.createElement("div"); filters.className = "filters";
+  for (const days of [7, 30, 90]) {
+    const b = document.createElement("button"); b.textContent = "آخر " + days + " يومًا";
+    b.setAttribute("aria-pressed", days === 30);
+    b.addEventListener("click", () => {
+      filters.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b));
+      drawChart(days);
+    });
+    filters.appendChild(b);
+  }
+  const chartWrap = document.createElement("div"); chartWrap.className = "chart-wrap";
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "100%"); svg.setAttribute("height", "250"); svg.id = "sales-chart";
+  const tip = document.createElement("div"); tip.className = "tooltip";
+  chartWrap.append(svg, tip);
+  const tableView = document.createElement("details"); tableView.className = "table-view";
+  const summary = document.createElement("summary"); summary.textContent = "عرض البيانات كجدول";
+  const dataTable = document.createElement("table");
+  dataTable.innerHTML = "";
+  const dtHead = document.createElement("thead"); const dtHr = document.createElement("tr");
+  for (const t of ["التاريخ", "الكمية", "الإيراد"]) { const th = document.createElement("th"); th.textContent = t; dtHr.appendChild(th); }
+  dtHead.appendChild(dtHr);
+  const dtBody = document.createElement("tbody");
+  dataTable.append(dtHead, dtBody);
+  tableView.append(summary, dataTable);
+  chartCard.append(filters, chartWrap, tableView);
+  container.appendChild(chartCard);
+
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  let chartState = null;
+
+  async function drawChart(days) {
+    const series = (await api("/dashboard/sales-timeseries?days=" + days)).series;
+    svg.replaceChildren(); dtBody.replaceChildren();
+    for (const r of series) {
+      const tr = document.createElement("tr");
+      tr.append(td(r.date), td(fmt(r.quantity), "num"), td(fmt(r.revenue), "num"));
+      dtBody.appendChild(tr);
+    }
+    if (!series.length) { chartState = null; return; }
+    const css = getComputedStyle(document.documentElement);
+    const C = name => css.getPropertyValue(name).trim();
+    const W = svg.clientWidth || 950, H = 250, m = { top: 16, right: 56, bottom: 26, left: 44 };
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const ys = series.map(r => r.quantity);
+    const step = Math.pow(10, Math.floor(Math.log10(Math.max(...ys) || 1)));
+    const yMax = Math.ceil(Math.max(...ys) / step) * step || 1;
+    const x = i => m.left + (series.length === 1 ? 0.5 : i / (series.length - 1)) * (W - m.left - m.right);
+    const y = v => H - m.bottom - (v / yMax) * (H - m.top - m.bottom);
+    for (let i = 0; i <= 4; i++) {
+      const v = yMax * i / 4, yy = y(v);
+      svg.appendChild(el("line", { x1: m.left, x2: W - m.right, y1: yy, y2: yy, stroke: C("--grid"), "stroke-width": 1 }));
+      const t = el("text", { x: m.left - 6, y: yy + 4, "text-anchor": "end", "font-size": 11, fill: C("--muted") });
+      t.textContent = v.toLocaleString("en"); svg.appendChild(t);
+    }
+    svg.appendChild(el("line", { x1: m.left, x2: W - m.right, y1: y(0), y2: y(0), stroke: C("--baseline"), "stroke-width": 1 }));
+    [0, Math.floor((series.length - 1) / 2), series.length - 1].forEach(i => {
+      const t = el("text", { x: x(i), y: H - 8, "text-anchor": "middle", "font-size": 11, fill: C("--muted") });
+      t.textContent = series[i].date.slice(5); svg.appendChild(t);
+    });
+    const line = series.map((r, i) => (i ? "L" : "M") + x(i) + " " + y(r.quantity)).join(" ");
+    svg.appendChild(el("path", { d: line + ` L ${x(series.length - 1)} ${y(0)} L ${x(0)} ${y(0)} Z`, fill: C("--series-1"), opacity: 0.1 }));
+    svg.appendChild(el("path", { d: line, fill: "none", stroke: C("--series-1"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    const li = series.length - 1;
+    svg.appendChild(el("circle", { cx: x(li), cy: y(series[li].quantity), r: 6, fill: C("--surface") }));
+    svg.appendChild(el("circle", { cx: x(li), cy: y(series[li].quantity), r: 4, fill: C("--series-1") }));
+    const endLabel = el("text", { x: x(li) + 8, y: y(series[li].quantity) + 4, "font-size": 12, "font-weight": 700, fill: C("--ink") });
+    endLabel.textContent = series[li].quantity.toLocaleString("en"); svg.appendChild(endLabel);
+    const cross = el("line", { y1: m.top, y2: H - m.bottom, stroke: C("--baseline"), "stroke-width": 1, visibility: "hidden" });
+    const ring = el("circle", { r: 6, fill: C("--surface"), visibility: "hidden" });
+    const dot = el("circle", { r: 4, fill: C("--series-1"), visibility: "hidden" });
+    svg.append(cross, ring, dot);
+    chartState = { series, x, y, W, cross, ring, dot };
+  }
+
+  chartWrap.addEventListener("pointermove", ev => {
+    if (!chartState) return;
+    const { series, x, y, W, cross, ring, dot } = chartState;
+    const rect = chartWrap.getBoundingClientRect();
+    const px = (ev.clientX - rect.left) * (W / rect.width);
+    let best = 0;
+    for (let i = 1; i < series.length; i++) if (Math.abs(x(i) - px) < Math.abs(x(best) - px)) best = i;
+    const cx = x(best), cy = y(series[best].quantity);
+    cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); cross.setAttribute("visibility", "visible");
+    ring.setAttribute("cx", cx); ring.setAttribute("cy", cy); ring.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", cx); dot.setAttribute("cy", cy); dot.setAttribute("visibility", "visible");
+    tip.replaceChildren();
+    const d1 = document.createElement("div"); d1.className = "t-date"; d1.textContent = series[best].date; tip.appendChild(d1);
+    for (const [val, name] of [[fmt(series[best].quantity), "وحدة"], [fmt(series[best].revenue), "إيراد"]]) {
+      const row = document.createElement("div"); row.className = "t-row";
+      const key = document.createElement("span"); key.className = "t-key";
+      const v = document.createElement("span"); v.className = "t-val"; v.textContent = val;
+      const n = document.createElement("span"); n.className = "t-name"; n.textContent = name;
+      row.append(key, v, n); tip.appendChild(row);
+    }
+    tip.style.display = "block";
+    tip.style.left = Math.min(cx / (W / rect.width) + 12, rect.width - 150) + "px";
+    tip.style.top = "12px";
+  });
+  chartWrap.addEventListener("pointerleave", () => {
+    tip.style.display = "none";
+    if (chartState) for (const k of ["cross", "ring", "dot"]) chartState[k].setAttribute("visibility", "hidden");
+  });
+  await drawChart(30);
+
+  /* الرؤى الذكية */
+  const insightsCard = document.createElement("div"); insightsCard.className = "card";
+  insightsCard.appendChild(Object.assign(document.createElement("h2"), { textContent: "🤖 الرؤى والتوصيات" }));
+  const insights = await api("/ai/insights");
+  const sum = document.createElement("p"); sum.className = "desc"; sum.textContent = insights.summary;
+  insightsCard.appendChild(sum);
+  const list = document.createElement("ul"); list.className = "insights-list";
+  for (const i of insights.insights) {
+    const li = document.createElement("li");
+    const title = document.createElement("div"); title.textContent = i.priority_label + " — " + i.title;
+    const rec = document.createElement("div"); rec.className = "rec"; rec.textContent = i.recommendation;
+    li.append(title, rec); list.appendChild(li);
+  }
+  insightsCard.appendChild(list);
+  container.appendChild(insightsCard);
+
+  /* المساعد */
+  const askCard = document.createElement("div"); askCard.className = "card";
+  askCard.appendChild(Object.assign(document.createElement("h2"), { textContent: "💬 المساعد الذكي" }));
+  const askRow = document.createElement("div"); askRow.className = "assistant";
+  const q = document.createElement("input"); q.placeholder = "اسأل: كيف حال المخزون؟ — كم الإيرادات؟ — ما وضع الإنتاج؟";
+  const askBtn = document.createElement("button"); askBtn.className = "btn primary"; askBtn.textContent = "اسأل";
+  const answer = document.createElement("p"); answer.className = "answer";
+  async function ask() {
+    if (!q.value.trim()) return;
+    answer.textContent = "…";
+    try { answer.textContent = (await api("/ai/assistant", { method: "POST", body: { question: q.value } })).answer; }
+    catch (e) { answer.textContent = e.message; }
+  }
+  askBtn.addEventListener("click", ask);
+  q.addEventListener("keydown", e => { if (e.key === "Enter") ask(); });
+  askRow.append(q, askBtn);
+  askCard.append(askRow, answer);
+  container.appendChild(askCard);
+}
+
+/* =========================================================
+   شاشة: المخزون
+   ========================================================= */
+async function viewInventory(container) {
+  const addBtn = actionBtn("＋ إضافة منتج", "primary", () => productForm());
+  addBtn.disabled = !canWrite();
+  container.appendChild(toolbar("📦 المخزون", [addBtn]));
+  writeGate(container);
+
+  const products = await api("/inventory/products");
+  const card = document.createElement("div"); card.className = "card";
+  card.appendChild(buildTable(
+    ["#", "الاسم", "SKU", "التصنيف", "الكمية", "حد الطلب", "التكلفة", "سعر البيع", "الحالة", "إجراءات"],
+    products,
+    p => {
+      const tr = document.createElement("tr");
+      tr.append(td(p.id, "num"), td(p.name), td(p.sku), td(p.category),
+                td(fmt(p.quantity), "num"), td(fmt(p.reorder_point), "num"),
+                td(fmt(p.unit_cost), "num"), td(fmt(p.unit_price), "num"));
+      const status = document.createElement("td");
+      const badge = document.createElement("span");
+      const low = p.quantity <= p.reorder_point;
+      badge.className = "badge" + (low ? " low" : "");
+      badge.textContent = low ? "⚠️ أعد الطلب" : "✅ متوفر";
+      status.appendChild(badge); tr.appendChild(status);
+      const actions = document.createElement("td"); actions.className = "actions";
+      if (canWrite()) {
+        actions.append(
+          actionBtn("± كمية", "", () => adjustForm(p)),
+          actionBtn("تعديل", "", () => productForm(p)),
+          actionBtn("حذف", "danger", () => confirmDialog(`حذف المنتج «${p.name}»؟`, async () => {
+            await api("/inventory/products/" + p.id, { method: "DELETE" });
+            toast("تم حذف المنتج"); render();
+          })),
+        );
+      }
+      tr.appendChild(actions);
+      return tr;
+    }
+  ));
+  container.appendChild(card);
+
+  function productForm(p) {
+    showForm({
+      title: p ? "تعديل منتج: " + p.name : "إضافة منتج جديد",
+      fields: [
+        { name: "name", label: "اسم المنتج", value: p?.name, required: true },
+        ...(p ? [] : [{ name: "sku", label: "رمز SKU (فريد)", required: true, placeholder: "مثال: PRD-100" }]),
+        { name: "category", label: "التصنيف", value: p?.category ?? "عام" },
+        { name: "unit", label: "الوحدة", value: p?.unit ?? "قطعة" },
+        ...(p ? [] : [{ name: "quantity", label: "الكمية الابتدائية", type: "number", value: 0 }]),
+        { name: "reorder_point", label: "حد إعادة الطلب", type: "number", value: p?.reorder_point ?? 10 },
+        { name: "unit_cost", label: "تكلفة الوحدة", type: "number", value: p?.unit_cost ?? 0 },
+        { name: "unit_price", label: "سعر البيع", type: "number", value: p?.unit_price ?? 0 },
+      ],
+      onSubmit: async v => {
+        if (p) { await api("/inventory/products/" + p.id, { method: "PUT", body: v }); toast("تم تحديث المنتج"); }
+        else { await api("/inventory/products", { method: "POST", body: v }); toast("تمت إضافة المنتج"); }
+        render();
+      },
+    });
+  }
+  function adjustForm(p) {
+    showForm({
+      title: `تسوية كمية «${p.name}» (المتوفر: ${fmt(p.quantity)})`,
+      fields: [
+        { name: "change", label: "التغيير (موجب للإضافة، سالب للسحب)", type: "number", required: true, placeholder: "مثال: 50 أو -20" },
+        { name: "reason", label: "السبب", value: "تسوية مخزون" },
+      ],
+      submitLabel: "تنفيذ",
+      onSubmit: async v => {
+        await api(`/inventory/products/${p.id}/adjust`, { method: "POST", body: v });
+        toast("تمت التسوية"); render();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   شاشة: الآلات والصيانة
+   ========================================================= */
+async function viewMachines(container) {
+  const addBtn = actionBtn("＋ إضافة آلة", "primary", () => machineForm());
+  addBtn.disabled = !canWrite();
+  container.appendChild(toolbar("⚙️ الآلات والصيانة التنبؤية", [addBtn]));
+  writeGate(container);
+
+  const { machines } = await api("/machines/risk-overview");
+  const card = document.createElement("div"); card.className = "card";
+  const desc = document.createElement("p"); desc.className = "desc";
+  desc.textContent = "احتمال العطل محسوب بالذكاء الاصطناعي من آخر قراءة حساسات لكل آلة";
+  card.appendChild(desc);
+
+  for (const m of machines) {
+    const row = document.createElement("div"); row.className = "machine-row";
+    const name = document.createElement("div"); name.style.fontWeight = "600"; name.textContent = m.name;
+    const chip = document.createElement("span"); chip.className = "badge";
+    chip.textContent = m.status === "working" ? "▶ تعمل" : m.status === "maintenance" ? "🔧 صيانة" : "⏸ متوقفة";
+    const meter = document.createElement("div"); meter.className = "meter";
+    const fill = document.createElement("div");
+    const val = document.createElement("div"); val.className = "meter-val";
+    const p = m.failure_probability;
+    if (p == null) { meter.style.background = "var(--grid)"; fill.style.width = "0"; val.textContent = "لا قراءات"; }
+    else {
+      const sev = p >= 0.7 ? ["--critical", "--critical-track", "🔴"] : p >= 0.4 ? ["--warning", "--warning-track", "🟡"] : ["--good", "--good-track", "🟢"];
+      fill.style.background = `var(${sev[0]})`; meter.style.background = `var(${sev[1]})`;
+      fill.style.width = Math.round(p * 100) + "%";
+      val.textContent = sev[2] + " " + Math.round(p * 100) + "٪";
+    }
+    meter.appendChild(fill);
+    const reco = document.createElement("div"); reco.className = "reco";
+    reco.textContent = m.recommendation || "";
+    const actions = document.createElement("div"); actions.style.display = "flex"; actions.style.gap = "6px"; actions.style.gridColumn = "1 / -1";
+    if (canWrite()) {
+      actions.append(
+        actionBtn("📡 قراءة حساسات", "", () => readingForm(m)),
+        actionBtn("🔧 تمت الصيانة", "", async () => {
+          await api(`/machines/${m.machine_id}/maintenance-done`, { method: "POST" });
+          toast("سُجّلت الصيانة وعادت الآلة للعمل"); render();
+        }),
+        actionBtn("تعديل", "", () => machineForm(m)),
+        actionBtn("حذف", "danger", () => confirmDialog(`حذف الآلة «${m.name}»؟`, async () => {
+          await api("/machines/" + m.machine_id, { method: "DELETE" });
+          toast("تم حذف الآلة"); render();
+        })),
+      );
+    }
+    row.append(name, chip, meter, val, reco, actions);
+    card.appendChild(row);
+  }
+  if (!machines.length) {
+    const empty = document.createElement("div"); empty.className = "empty"; empty.textContent = "لا توجد آلات بعد";
+    card.appendChild(empty);
+  }
+  container.appendChild(card);
+
+  function machineForm(m) {
+    showForm({
+      title: m ? "تعديل آلة: " + m.name : "إضافة آلة جديدة",
+      fields: [
+        { name: "name", label: "اسم الآلة", value: m?.name, required: true },
+        { name: "machine_type", label: "النوع", value: m ? undefined : "خط إنتاج", placeholder: "مثال: مكبس، خط بثق..." },
+        { name: "status", label: "الحالة", type: "select", value: m?.status ?? "working",
+          options: [
+            { value: "working", label: "تعمل" },
+            { value: "maintenance", label: "في الصيانة" },
+            { value: "stopped", label: "متوقفة" },
+          ] },
+      ],
+      onSubmit: async v => {
+        if (!v.machine_type) delete v.machine_type;
+        if (m) { await api("/machines/" + m.machine_id, { method: "PUT", body: v }); toast("تم تحديث الآلة"); }
+        else { await api("/machines", { method: "POST", body: v }); toast("تمت إضافة الآلة"); }
+        render();
+      },
+    });
+  }
+  function readingForm(m) {
+    showForm({
+      title: "تسجيل قراءة حساسات — " + m.name,
+      fields: [
+        { name: "temperature", label: "درجة الحرارة (مئوية)", type: "number", required: true, placeholder: "مثال: 72" },
+        { name: "vibration", label: "الاهتزاز (ملم/ثانية)", type: "number", required: true, placeholder: "مثال: 3.2" },
+        { name: "pressure", label: "الضغط (بار)", type: "number", required: true, placeholder: "مثال: 5.0" },
+        { name: "running_hours", label: "ساعات التشغيل منذ آخر صيانة", type: "number", required: true, placeholder: "مثال: 340" },
+      ],
+      submitLabel: "تسجيل",
+      onSubmit: async v => {
+        await api(`/machines/${m.machine_id}/readings`, { method: "POST", body: v });
+        toast("سُجّلت القراءة وتحدّث التنبؤ"); render();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   شاشة: الإنتاج
+   ========================================================= */
+async function viewProduction(container) {
+  const addBtn = actionBtn("＋ أمر إنتاج جديد", "primary", () => orderForm());
+  addBtn.disabled = !canWrite();
+  container.appendChild(toolbar("🏗️ أوامر الإنتاج والجودة", [addBtn]));
+  writeGate(container);
+
+  const [orders, products, anomalies] = await Promise.all([
+    api("/production/orders"), api("/inventory/products"), api("/production/quality/anomalies"),
+  ]);
+  const productName = id => products.find(p => p.id === id)?.name ?? ("#" + id);
+  const anomalyIds = new Set((anomalies.anomalies || []).map(a => a.order_id));
+
+  const card = document.createElement("div"); card.className = "card";
+  card.appendChild(buildTable(
+    ["#", "المنتج", "المخطط", "المنتَج", "المعيب", "الحالة", "الجودة", "إجراءات"],
+    [...orders].sort((a, b) => b.id - a.id),
+    o => {
+      const tr = document.createElement("tr");
+      tr.append(td(o.id, "num"), td(productName(o.product_id)),
+                td(fmt(o.planned_quantity), "num"), td(fmt(o.produced_quantity), "num"), td(fmt(o.defective_quantity), "num"));
+      const st = document.createElement("td"); const badge = document.createElement("span"); badge.className = "badge";
+      badge.textContent = o.status === "completed" ? "✅ مكتمل" : o.status === "in_progress" ? "⏳ قيد التنفيذ" : o.status;
+      st.appendChild(badge); tr.appendChild(st);
+      const quality = document.createElement("td");
+      quality.textContent = anomalyIds.has(o.id) ? "🚨 شاذ" : (o.status === "completed" ? "سليم" : "—");
+      tr.appendChild(quality);
+      const actions = document.createElement("td"); actions.className = "actions";
+      if (canWrite() && o.status === "in_progress") {
+        actions.appendChild(actionBtn("إكمال الأمر", "primary", () => completeForm(o)));
+      }
+      tr.appendChild(actions);
+      return tr;
+    }
+  ));
+  container.appendChild(card);
+
+  function orderForm() {
+    showForm({
+      title: "أمر إنتاج جديد",
+      fields: [
+        { name: "product_id", label: "المنتج", type: "select",
+          options: products.map(p => ({ value: p.id, label: p.name + " (" + p.sku + ")" })) },
+        { name: "planned_quantity", label: "الكمية المخططة", type: "number", required: true, placeholder: "مثال: 500" },
+      ],
+      submitLabel: "إنشاء",
+      onSubmit: async v => {
+        await api("/production/orders", { method: "POST", body: { product_id: Number(v.product_id), planned_quantity: v.planned_quantity } });
+        toast("أُنشئ أمر الإنتاج"); render();
+      },
+    });
+  }
+  function completeForm(o) {
+    showForm({
+      title: `إكمال أمر الإنتاج #${o.id} (المخطط: ${fmt(o.planned_quantity)})`,
+      fields: [
+        { name: "produced_quantity", label: "الكمية المنتَجة", type: "number", required: true },
+        { name: "defective_quantity", label: "الكمية المعيبة", type: "number", value: 0 },
+      ],
+      submitLabel: "إكمال",
+      onSubmit: async v => {
+        await api(`/production/orders/${o.id}/complete`, { method: "POST", body: v });
+        toast("اكتمل الأمر وأُضيف الصافي للمخزون"); render();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   شاشة: المبيعات
+   ========================================================= */
+async function viewSales(container) {
+  const addBtn = actionBtn("＋ طلب بيع جديد", "primary", () => saleForm());
+  addBtn.disabled = !canWrite();
+  container.appendChild(toolbar("💰 المبيعات وتوقع الطلب", [addBtn]));
+  writeGate(container);
+
+  const [orders, products] = await Promise.all([api("/sales/orders"), api("/inventory/products")]);
+  const productName = id => products.find(p => p.id === id)?.name ?? ("#" + id);
+
+  /* توقع الطلب */
+  const fCard = document.createElement("div"); fCard.className = "card";
+  fCard.appendChild(Object.assign(document.createElement("h2"), { textContent: "🤖 توقع الطلب (30 يومًا)" }));
+  const fRow = document.createElement("div"); fRow.style.display = "flex"; fRow.style.gap = "8px"; fRow.style.alignItems = "center";
+  const sel = document.createElement("select"); sel.style.maxWidth = "280px";
+  for (const p of products) { const o = document.createElement("option"); o.value = p.id; o.textContent = p.name; sel.appendChild(o); }
+  const fBtn = document.createElement("button"); fBtn.className = "btn"; fBtn.textContent = "توقّع";
+  const fOut = document.createElement("p"); fOut.className = "answer";
+  fBtn.addEventListener("click", async () => {
+    fOut.textContent = "…";
+    const f = await api(`/sales/forecast/${sel.value}?days_ahead=30`);
+    fOut.textContent = f.status === "ok"
+      ? `${f.trend} — الطلب المتوقع: ${fmt(f.expected_total_demand)} وحدة (متوسط يومي ${fmt(f.expected_daily_average)})`
+      : f.message;
+  });
+  fRow.append(sel, fBtn); fCard.append(fRow, fOut);
+  container.appendChild(fCard);
+
+  const card = document.createElement("div"); card.className = "card";
+  card.appendChild(buildTable(
+    ["#", "المنتج", "العميل", "الكمية", "سعر الوحدة", "الإجمالي", "التاريخ"],
+    [...orders].sort((a, b) => b.id - a.id).slice(0, 100),
+    o => {
+      const tr = document.createElement("tr");
+      tr.append(td(o.id, "num"), td(productName(o.product_id)), td(o.customer_name),
+                td(fmt(o.quantity), "num"), td(fmt(o.unit_price), "num"),
+                td(fmt(o.quantity * o.unit_price), "num"), td(o.ordered_at.slice(0, 10)));
+      return tr;
+    }
+  ));
+  const note = document.createElement("p"); note.className = "desc";
+  note.textContent = "يُعرض أحدث 100 طلب. البيع يخصم من المخزون تلقائيًا ويمنع البيع فوق المتاح.";
+  card.appendChild(note);
+  container.appendChild(card);
+
+  function saleForm() {
+    showForm({
+      title: "طلب بيع جديد",
+      fields: [
+        { name: "product_id", label: "المنتج", type: "select",
+          options: products.map(p => ({ value: p.id, label: `${p.name} (متوفر: ${fmt(p.quantity)})` })) },
+        { name: "customer_name", label: "اسم العميل", value: "عميل" },
+        { name: "quantity", label: "الكمية", type: "number", required: true },
+        { name: "unit_price", label: "سعر الوحدة (اتركه فارغًا لسعر المنتج)", type: "number" },
+      ],
+      submitLabel: "بيع",
+      onSubmit: async v => {
+        const body = { product_id: Number(v.product_id), customer_name: v.customer_name, quantity: v.quantity };
+        if (v.unit_price !== null) body.unit_price = v.unit_price;
+        await api("/sales/orders", { method: "POST", body });
+        toast("سُجّل البيع وخُصم من المخزون"); render();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   شاشة: الموظفون
+   ========================================================= */
+async function viewEmployees(container) {
+  const addBtn = actionBtn("＋ إضافة موظف", "primary", () => employeeForm());
+  addBtn.disabled = !canWrite();
+  container.appendChild(toolbar("👥 الموظفون", [addBtn]));
+  writeGate(container);
+
+  const employees = await api("/employees");
+  const card = document.createElement("div"); card.className = "card";
+  card.appendChild(buildTable(
+    ["#", "الاسم", "الوظيفة", "القسم", "الراتب", "تاريخ التعيين", "إجراءات"],
+    employees,
+    e => {
+      const tr = document.createElement("tr");
+      tr.append(td(e.id, "num"), td(e.name), td(e.role), td(e.department),
+                td(fmt(e.salary), "num"), td(e.hired_at.slice(0, 10)));
+      const actions = document.createElement("td"); actions.className = "actions";
+      if (canWrite()) {
+        actions.append(
+          actionBtn("تعديل", "", () => employeeForm(e)),
+          actionBtn("حذف", "danger", () => confirmDialog(`حذف الموظف «${e.name}»؟`, async () => {
+            await api("/employees/" + e.id, { method: "DELETE" });
+            toast("تم حذف الموظف"); render();
+          })),
+        );
+      }
+      tr.appendChild(actions);
+      return tr;
+    }
+  ));
+  container.appendChild(card);
+
+  function employeeForm(e) {
+    showForm({
+      title: e ? "تعديل موظف: " + e.name : "إضافة موظف جديد",
+      fields: [
+        { name: "name", label: "الاسم", value: e?.name, required: true },
+        { name: "role", label: "الوظيفة", value: e?.role ?? "عامل إنتاج" },
+        { name: "department", label: "القسم", value: e?.department ?? "الإنتاج" },
+        { name: "salary", label: "الراتب الشهري", type: "number", value: e?.salary ?? 0 },
+      ],
+      onSubmit: async v => {
+        if (e) { await api("/employees/" + e.id, { method: "PUT", body: v }); toast("تم تحديث الموظف"); }
+        else { await api("/employees", { method: "POST", body: v }); toast("تمت إضافة الموظف"); }
+        render();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   شاشة: المستخدمون (admin فقط)
+   ========================================================= */
+async function viewUsers(container) {
+  const addBtn = actionBtn("＋ إضافة مستخدم", "primary", () => userForm());
+  addBtn.disabled = state.role !== "admin";
+  container.appendChild(toolbar("🔐 مستخدمو النظام", [addBtn]));
+
+  if (state.role !== "admin") {
+    const note = document.createElement("p"); note.className = "desc";
+    note.textContent = "هذه الشاشة لمدير النظام (admin) فقط — سجّل الدخول بحساب admin.";
+    container.appendChild(note);
+    return;
+  }
+  const users = await api("/auth/users");
+  const card = document.createElement("div"); card.className = "card";
+  card.appendChild(buildTable(
+    ["#", "اسم المستخدم", "الاسم الكامل", "الدور", "أُنشئ في"],
+    users,
+    u => {
+      const tr = document.createElement("tr");
+      tr.append(td(u.id, "num"), td(u.username), td(u.full_name || "—"), td(u.role), td(u.created_at.slice(0, 10)));
+      return tr;
+    }
+  ));
+  const roles = document.createElement("p"); roles.className = "desc";
+  roles.textContent = "الأدوار: admin (كل شيء) · manager (قراءة وكتابة) · viewer (قراءة فقط)";
+  card.appendChild(roles);
+  container.appendChild(card);
+
+  function userForm() {
+    showForm({
+      title: "إضافة مستخدم جديد",
+      fields: [
+        { name: "username", label: "اسم المستخدم", required: true },
+        { name: "full_name", label: "الاسم الكامل" },
+        { name: "password", label: "كلمة المرور (6 أحرف فأكثر)", type: "password", required: true },
+        { name: "role", label: "الدور", type: "select", value: "viewer",
+          options: [
+            { value: "viewer", label: "viewer — قراءة فقط" },
+            { value: "manager", label: "manager — قراءة وكتابة" },
+            { value: "admin", label: "admin — مدير نظام" },
+          ] },
+      ],
+      submitLabel: "إنشاء",
+      onSubmit: async v => {
+        await api("/auth/register", { method: "POST", body: v });
+        toast("أُنشئ المستخدم " + v.username); render();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   التنقّل والتشغيل
+   ========================================================= */
+const VIEWS = [
+  { id: "dashboard", label: "لوحة التحكم", render: viewDashboard },
+  { id: "inventory", label: "المخزون", render: viewInventory },
+  { id: "machines", label: "الآلات", render: viewMachines },
+  { id: "production", label: "الإنتاج", render: viewProduction },
+  { id: "sales", label: "المبيعات", render: viewSales },
+  { id: "employees", label: "الموظفون", render: viewEmployees },
+  { id: "users", label: "المستخدمون", render: viewUsers },
+];
+let currentView = location.hash.replace("#", "") || "dashboard";
+if (!VIEWS.some(v => v.id === currentView)) currentView = "dashboard";
+
+function renderNav() {
+  const nav = document.getElementById("nav");
+  nav.replaceChildren();
+  for (const v of VIEWS) {
+    const b = document.createElement("button");
+    b.textContent = v.label;
+    b.setAttribute("aria-current", v.id === currentView);
+    b.addEventListener("click", () => { currentView = v.id; location.hash = v.id; renderNav(); render(); });
+    nav.appendChild(b);
+  }
+}
+
+async function render() {
+  const container = document.getElementById("view");
+  container.replaceChildren();
+  const view = VIEWS.find(v => v.id === currentView);
+  try { await view.render(container); }
+  catch (e) {
+    const err = document.createElement("p"); err.className = "empty";
+    err.textContent = "تعذر تحميل البيانات: " + e.message;
+    container.appendChild(err);
+  }
+}
+
+window.addEventListener("hashchange", () => {
+  const id = location.hash.replace("#", "");
+  if (VIEWS.some(v => v.id === id) && id !== currentView) { currentView = id; renderNav(); render(); }
+});
+
+renderUserbox();
+renderNav();
+render();
+</script>
+</body>
+</html>

@@ -37,6 +37,39 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
     return product
 
 
+@router.put("/products/{product_id}", response_model=schemas.ProductOut)
+def update_product(product_id: int, changes: schemas.ProductUpdate, db: Session = Depends(get_db),
+                   _: object = Depends(require_writer)):
+    product = db.get(models.Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="المنتج غير موجود")
+    for field, value in changes.model_dump(exclude_none=True).items():
+        setattr(product, field, value)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.delete("/products/{product_id}")
+def delete_product(product_id: int, db: Session = Depends(get_db),
+                   _: object = Depends(require_writer)):
+    product = db.get(models.Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="المنتج غير موجود")
+    has_moves = (
+        db.query(models.SalesOrder).filter_by(product_id=product_id).first()
+        or db.query(models.ProductionOrder).filter_by(product_id=product_id).first()
+    )
+    if has_moves:
+        raise HTTPException(
+            status_code=400,
+            detail="لا يمكن حذف منتج له حركات مبيعات أو إنتاج — للحفاظ على سجلات النظام",
+        )
+    db.delete(product)
+    db.commit()
+    return {"message": "تم حذف المنتج بنجاح"}
+
+
 @router.post("/products/{product_id}/adjust", response_model=schemas.ProductOut)
 def adjust_stock(product_id: int, adjustment: schemas.StockAdjust, db: Session = Depends(get_db),
                  _: object = Depends(require_writer)):

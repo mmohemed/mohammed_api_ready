@@ -68,6 +68,53 @@ class TestInventory:
         assert "alerts" in data
 
 
+# ---------- تعديل وحذف (CRUD) ----------
+class TestCrud:
+    def test_update_product(self, client, admin_headers):
+        created = client.post("/inventory/products", headers=admin_headers, json={
+            "name": "قبل التعديل", "sku": "UPD-1", "quantity": 10}).json()
+        updated = client.put(f"/inventory/products/{created['id']}", headers=admin_headers,
+                             json={"name": "بعد التعديل", "unit_price": 99}).json()
+        assert updated["name"] == "بعد التعديل" and updated["unit_price"] == 99
+        assert updated["quantity"] == 10  # الكمية لا تتغير من التعديل
+
+    def test_delete_product_without_moves(self, client, admin_headers):
+        created = client.post("/inventory/products", headers=admin_headers, json={
+            "name": "للحذف", "sku": "DEL-1"}).json()
+        assert client.delete(f"/inventory/products/{created['id']}",
+                             headers=admin_headers).status_code == 200
+        assert client.get(f"/inventory/products/{created['id']}").status_code == 404
+
+    def test_delete_product_with_sales_blocked(self, client, admin_headers):
+        # المنتج 1 له مبيعات في seed — يجب رفض حذفه
+        assert client.delete("/inventory/products/1", headers=admin_headers).status_code == 400
+
+    def test_update_machine(self, client, admin_headers):
+        created = client.post("/machines", headers=admin_headers, json={"name": "آلة قبل"}).json()
+        updated = client.put(f"/machines/{created['id']}", headers=admin_headers,
+                             json={"name": "آلة بعد", "status": "stopped"}).json()
+        assert updated["name"] == "آلة بعد" and updated["status"] == "stopped"
+
+    def test_delete_machine_without_orders(self, client, admin_headers):
+        created = client.post("/machines", headers=admin_headers, json={"name": "آلة للحذف"}).json()
+        assert client.delete(f"/machines/{created['id']}", headers=admin_headers).status_code == 200
+
+    def test_delete_machine_with_orders_blocked(self, client, admin_headers):
+        # الآلة 1 لها أوامر إنتاج في seed
+        assert client.delete("/machines/1", headers=admin_headers).status_code == 400
+
+    def test_update_employee(self, client, admin_headers):
+        created = client.post("/employees", headers=admin_headers,
+                              json={"name": "موظف", "salary": 1000}).json()
+        updated = client.put(f"/employees/{created['id']}", headers=admin_headers,
+                             json={"salary": 2000}).json()
+        assert updated["salary"] == 2000 and updated["name"] == "موظف"
+
+    def test_crud_requires_writer(self, client):
+        assert client.put("/inventory/products/1", json={"name": "x"}).status_code == 401
+        assert client.delete("/machines/1").status_code == 401
+
+
 # ---------- الآلات والصيانة التنبؤية ----------
 class TestMachines:
     def test_risk_overview(self, client):

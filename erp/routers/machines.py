@@ -29,6 +29,36 @@ def list_machines(db: Session = Depends(get_db)):
     return db.query(models.Machine).all()
 
 
+@router.put("/{machine_id}", response_model=schemas.MachineOut)
+def update_machine(machine_id: int, changes: schemas.MachineUpdate, db: Session = Depends(get_db),
+                   _: object = Depends(require_writer)):
+    machine = db.get(models.Machine, machine_id)
+    if not machine:
+        raise HTTPException(status_code=404, detail="الآلة غير موجودة")
+    for field, value in changes.model_dump(exclude_none=True).items():
+        setattr(machine, field, value)
+    db.commit()
+    db.refresh(machine)
+    return machine
+
+
+@router.delete("/{machine_id}")
+def delete_machine(machine_id: int, db: Session = Depends(get_db),
+                   _: object = Depends(require_writer)):
+    machine = db.get(models.Machine, machine_id)
+    if not machine:
+        raise HTTPException(status_code=404, detail="الآلة غير موجودة")
+    if db.query(models.ProductionOrder).filter_by(machine_id=machine_id).first():
+        raise HTTPException(
+            status_code=400,
+            detail="لا يمكن حذف آلة لها أوامر إنتاج مسجلة — غيّر حالتها إلى stopped بدلًا من الحذف",
+        )
+    db.query(models.SensorReading).filter_by(machine_id=machine_id).delete()
+    db.delete(machine)
+    db.commit()
+    return {"message": "تم حذف الآلة بنجاح"}
+
+
 @router.get("/risk-overview")
 def machines_risk_overview(db: Session = Depends(get_db)):
     """🤖 احتمال العطل لكل آلة دفعة واحدة — تغذي لوحة التحكم المرئية."""
