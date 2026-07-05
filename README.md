@@ -38,7 +38,16 @@
    عرّف `ERP_MQTT_BROKER` (و`ERP_MQTT_PORT` اختياريًا) ويستمع النظام تلقائيًا للعنوان
    `factory/machines/{id}/sensors` بحمولة JSON. جرّبه بالمحاكي: `python -m erp.iot.simulator`.
 
-## 🚀 التشغيل
+## 🐳 التشغيل بـ Docker (أسهل طريقة)
+
+```bash
+docker compose up --build
+# أو بدون compose:
+# docker build -t smart-erp . && docker run -p 8000:8000 smart-erp
+```
+ثم افتح `http://localhost:8000/` — البيانات التجريبية تُنشأ تلقائيًا عند أول تشغيل.
+
+## 🚀 التشغيل اليدوي
 
 ```bash
 # 1) تثبيت المتطلبات
@@ -52,6 +61,12 @@ uvicorn erp.main:app --reload
 
 # لوحة التحكم المرئية:        http://localhost:8000/
 # الوثائق التفاعلية (Swagger): http://localhost:8000/docs
+```
+
+## 🧪 الاختبارات
+
+```bash
+pytest          # 30 اختبارًا تغطي المسارات والصلاحيات والذكاء الاصطناعي وإنترنت الأشياء
 ```
 
 ## 🔐 المصادقة والصلاحيات
@@ -135,12 +150,16 @@ erp/
 │   └── simulator.py                # محاكي حساسات للتجربة
 └── routers/
     ├── auth.py        # تسجيل الدخول وإدارة المستخدمين
-    ├── dashboard.py   # لوحة التحكم + المساعد
+    ├── dashboard.py   # لوحة التحكم + المساعد + الرؤى
     ├── inventory.py   # المخزون
     ├── machines.py    # الآلات والصيانة
     ├── production.py  # الإنتاج والجودة
     ├── sales.py       # المبيعات
     └── employees.py   # الموظفون
+
+tests/                 # اختبارات pytest (30 اختبارًا)
+Dockerfile             # التشغيل بحاوية واحدة
+docker-compose.yml     # docker compose up
 ```
 
 > ملاحظة: يحتوي المستودع أيضًا على `main.py` في الجذر وهو API قديم لتشخيص أعطال السيارات، مستقل عن نظام الـ ERP.

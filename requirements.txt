@@ -9,3 +9,5 @@ numpy
 pydantic>=2.0
 anthropic      # المساعد الذكي المتقدم (اختياري: يتطلب ANTHROPIC_API_KEY)
 paho-mqtt      # استقبال قراءات الحساسات عبر MQTT (اختياري: يتطلب ERP_MQTT_BROKER)
+pytest         # تشغيل الاختبارات: pytest
+httpx          # يحتاجه TestClient في الاختبارات

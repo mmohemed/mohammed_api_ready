@@ -1,0 +1,9 @@
+__pycache__
+*.pyc
+erp.db
+.git
+tests/
+venv/
+.venv/
+*.pkl
+main.py
