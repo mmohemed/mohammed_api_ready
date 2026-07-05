@@ -26,6 +26,19 @@ def list_employees(db: Session = Depends(get_db)):
     return db.query(models.Employee).all()
 
 
+@router.put("/{employee_id}", response_model=schemas.EmployeeOut)
+def update_employee(employee_id: int, changes: schemas.EmployeeUpdate, db: Session = Depends(get_db),
+                    _: object = Depends(require_writer)):
+    employee = db.get(models.Employee, employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="الموظف غير موجود")
+    for field, value in changes.model_dump(exclude_none=True).items():
+        setattr(employee, field, value)
+    db.commit()
+    db.refresh(employee)
+    return employee
+
+
 @router.delete("/{employee_id}")
 def delete_employee(employee_id: int, db: Session = Depends(get_db),
                  _: object = Depends(require_writer)):

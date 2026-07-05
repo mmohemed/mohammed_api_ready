@@ -27,6 +27,16 @@ class ProductOut(ProductCreate):
         from_attributes = True
 
 
+class ProductUpdate(BaseModel):
+    """تحديث بيانات منتج — كل الحقول اختيارية (الكمية تُعدّل عبر /adjust)"""
+    name: Optional[str] = None
+    category: Optional[str] = None
+    unit: Optional[str] = None
+    reorder_point: Optional[float] = None
+    unit_cost: Optional[float] = None
+    unit_price: Optional[float] = None
+
+
 class StockAdjust(BaseModel):
     change: float = Field(description="التغيير في الكمية: موجب للإضافة وسالب للسحب")
     reason: str = "تسوية مخزون"
@@ -46,6 +56,12 @@ class MachineOut(MachineCreate):
 
     class Config:
         from_attributes = True
+
+
+class MachineUpdate(BaseModel):
+    name: Optional[str] = None
+    machine_type: Optional[str] = None
+    status: Optional[str] = Field(default=None, pattern="^(working|maintenance|stopped)$")
 
 
 class SensorReadingCreate(BaseModel):
@@ -118,6 +134,13 @@ class EmployeeCreate(BaseModel):
     role: str = "عامل إنتاج"
     department: str = "الإنتاج"
     salary: float = 0
+
+
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    department: Optional[str] = None
+    salary: Optional[float] = None
 
 
 class EmployeeOut(EmployeeCreate):
