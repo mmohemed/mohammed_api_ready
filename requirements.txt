@@ -4,3 +4,8 @@ joblib
 pandas
 scikit-learn
 matplotlib
+sqlalchemy>=2.0
+numpy
+pydantic>=2.0
+anthropic      # المساعد الذكي المتقدم (اختياري: يتطلب ANTHROPIC_API_KEY)
+paho-mqtt      # استقبال قراءات الحساسات عبر MQTT (اختياري: يتطلب ERP_MQTT_BROKER)

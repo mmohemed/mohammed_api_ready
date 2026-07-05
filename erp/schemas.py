@@ -1,0 +1,164 @@
+# =========================================
+# مخططات Pydantic (المدخلات والمخرجات)
+# =========================================
+from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+
+# ---------- المنتجات / المخزون ----------
+class ProductCreate(BaseModel):
+    name: str
+    sku: str
+    category: str = "عام"
+    unit: str = "قطعة"
+    quantity: float = 0
+    reorder_point: float = 10
+    unit_cost: float = 0
+    unit_price: float = 0
+
+
+class ProductOut(ProductCreate):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StockAdjust(BaseModel):
+    change: float = Field(description="التغيير في الكمية: موجب للإضافة وسالب للسحب")
+    reason: str = "تسوية مخزون"
+
+
+# ---------- الآلات والصيانة ----------
+class MachineCreate(BaseModel):
+    name: str
+    machine_type: str = "خط إنتاج"
+    status: str = "working"
+
+
+class MachineOut(MachineCreate):
+    id: int
+    installed_at: datetime
+    last_maintenance: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SensorReadingCreate(BaseModel):
+    temperature: float = Field(description="درجة الحرارة بالمئوية")
+    vibration: float = Field(description="الاهتزاز ملم/ثانية")
+    pressure: float = Field(description="الضغط بالبار")
+    running_hours: float = Field(description="ساعات التشغيل منذ آخر صيانة")
+
+
+class SensorReadingOut(SensorReadingCreate):
+    id: int
+    machine_id: int
+    recorded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ---------- الإنتاج ----------
+class ProductionOrderCreate(BaseModel):
+    product_id: int
+    machine_id: Optional[int] = None
+    planned_quantity: float
+
+
+class ProductionReport(BaseModel):
+    produced_quantity: float
+    defective_quantity: float = 0
+
+
+class ProductionOrderOut(BaseModel):
+    id: int
+    product_id: int
+    machine_id: Optional[int]
+    planned_quantity: float
+    produced_quantity: float
+    defective_quantity: float
+    status: str
+    created_at: datetime
+    completed_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+# ---------- المبيعات ----------
+class SalesOrderCreate(BaseModel):
+    product_id: int
+    customer_name: str = "عميل"
+    quantity: float
+    unit_price: Optional[float] = None  # إن لم يُحدد يؤخذ سعر المنتج
+
+
+class SalesOrderOut(BaseModel):
+    id: int
+    product_id: int
+    customer_name: str
+    quantity: float
+    unit_price: float
+    status: str
+    ordered_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ---------- الموظفون ----------
+class EmployeeCreate(BaseModel):
+    name: str
+    role: str = "عامل إنتاج"
+    department: str = "الإنتاج"
+    salary: float = 0
+
+
+class EmployeeOut(EmployeeCreate):
+    id: int
+    hired_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ---------- المستخدمون والمصادقة ----------
+class UserCreate(BaseModel):
+    username: str
+    password: str = Field(min_length=6, description="6 أحرف على الأقل")
+    full_name: str = ""
+    role: str = Field(default="viewer", pattern="^(admin|manager|viewer)$")
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    full_name: str
+    role: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    role: str
+    username: str
+
+
+# ---------- الذكاء الاصطناعي ----------
+class AssistantQuestion(BaseModel):
+    question: str = Field(description="سؤال بالعربية عن حالة المصنع")
