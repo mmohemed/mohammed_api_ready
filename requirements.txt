@@ -11,3 +11,6 @@ anthropic      # المساعد الذكي المتقدم (اختياري: يت�
 paho-mqtt      # استقبال قراءات الحساسات عبر MQTT (اختياري: يتطلب ERP_MQTT_BROKER)
 pytest         # تشغيل الاختبارات: pytest
 httpx          # يحتاجه TestClient في الاختبارات
+qrcode         # باركود QR للمنتجات
+pillow         # توليد صور QR
+openpyxl       # تقارير Excel

@@ -197,6 +197,7 @@ class EmployeeCreate(BaseModel):
     role: str = "عامل إنتاج"
     department: str = "الإنتاج"
     salary: float = 0
+    badge_code: Optional[str] = Field(default=None, description="رقم البطاقة/البصمة لأجهزة الحضور")
 
 
 class EmployeeUpdate(BaseModel):
@@ -204,6 +205,7 @@ class EmployeeUpdate(BaseModel):
     role: Optional[str] = None
     department: Optional[str] = None
     salary: Optional[float] = None
+    badge_code: Optional[str] = None
 
 
 class EmployeeOut(EmployeeCreate):

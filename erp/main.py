@@ -21,10 +21,13 @@ from .routers import (
     auth,
     dashboard,
     employees,
+    hr,
+    integrations,
     inventory,
     machines,
     production,
     purchases,
+    reports,
     sales,
 )
 
@@ -60,6 +63,9 @@ app.include_router(sales.router)
 app.include_router(purchases.router)
 app.include_router(accounting.router)
 app.include_router(employees.router)
+app.include_router(hr.router)
+app.include_router(reports.router)
+app.include_router(integrations.router)
 
 
 @app.get("/", include_in_schema=False)

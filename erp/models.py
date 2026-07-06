@@ -199,4 +199,32 @@ class Employee(Base):
     role = Column(String, default="عامل إنتاج")
     department = Column(String, default="الإنتاج")
     salary = Column(Float, default=0)
+    badge_code = Column(String, unique=True, nullable=True)   # رقم البطاقة/البصمة لأجهزة الحضور
     hired_at = Column(DateTime, default=datetime.utcnow)
+
+    attendance = relationship("AttendanceRecord", back_populates="employee")
+
+
+class AttendanceRecord(Base):
+    """سجلات الحضور والانصراف (يدوي أو من أجهزة البصمة)"""
+    __tablename__ = "attendance_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    check_in = Column(DateTime, nullable=False)
+    check_out = Column(DateTime, nullable=True)
+    source = Column(String, default="manual")        # manual / device
+
+    employee = relationship("Employee", back_populates="attendance")
+
+
+class ApiKey(Base):
+    """مفاتيح تكامل الأنظمة الخارجية وأجهزة البصمة (تُرسل في ترويسة X-API-Key)"""
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)            # وصف: "جهاز بصمة البوابة 1"
+    key_hash = Column(String, unique=True, nullable=False)
+    prefix = Column(String, nullable=False)          # أول 8 أحرف للعرض
+    active = Column(Integer, default=1)
+    created_at = Column(DateTime, default=datetime.utcnow)
