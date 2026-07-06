@@ -163,11 +163,11 @@ def seed():
 
         # ---------- موظفون ----------
         db.add_all([
-            Employee(name="محمد أحمد", role="مدير إنتاج", department="الإنتاج", salary=9000),
-            Employee(name="خالد سعيد", role="فني صيانة", department="الصيانة", salary=6000),
-            Employee(name="سارة علي", role="مسؤولة جودة", department="الجودة", salary=6500),
-            Employee(name="عمر حسن", role="عامل إنتاج", department="الإنتاج", salary=4000),
-            Employee(name="فاطمة يوسف", role="محاسبة", department="المالية", salary=7000),
+            Employee(name="محمد أحمد", role="مدير إنتاج", department="الإنتاج", salary=9000, badge_code="1001"),
+            Employee(name="خالد سعيد", role="فني صيانة", department="الصيانة", salary=6000, badge_code="1002"),
+            Employee(name="سارة علي", role="مسؤولة جودة", department="الجودة", salary=6500, badge_code="1003"),
+            Employee(name="عمر حسن", role="عامل إنتاج", department="الإنتاج", salary=4000, badge_code="1004"),
+            Employee(name="فاطمة يوسف", role="محاسبة", department="المالية", salary=7000, badge_code="1005"),
         ])
 
         db.commit()

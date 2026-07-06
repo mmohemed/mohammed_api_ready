@@ -281,6 +281,63 @@ class TestWorkflow:
                              headers=admin_headers).status_code == 200
 
 
+# ---------- الحضور والتكامل والتقارير والباركود ----------
+class TestPhase2:
+    def test_manual_attendance_cycle(self, client, admin_headers):
+        r = client.post("/hr/attendance/1/in", headers=admin_headers)
+        assert r.status_code == 200
+        # حضور مكرر مرفوض
+        assert client.post("/hr/attendance/1/in", headers=admin_headers).status_code == 400
+        day = client.get("/hr/attendance").json()
+        record = next(x for x in day["records"] if x["employee_id"] == 1)
+        assert record["status"] == "✅ حاضر"
+        assert client.post("/hr/attendance/1/out", headers=admin_headers).status_code == 200
+        day = client.get("/hr/attendance").json()
+        record = next(x for x in day["records"] if x["employee_id"] == 1)
+        assert record["status"] == "🏠 انصرف" and record["hours"] is not None
+
+    def test_api_key_and_device_attendance(self, client, admin_headers):
+        # جهاز بلا مفتاح مرفوض
+        assert client.post("/integrations/attendance",
+                           json={"badge_code": "1002", "direction": "in"}).status_code == 401
+        # إنشاء مفتاح (admin فقط)
+        created = client.post("/integrations/keys", headers=admin_headers,
+                              json={"name": "جهاز بصمة تجريبي"}).json()
+        api_key = created["api_key"]
+        assert api_key.startswith("erp_")
+        # الجهاز يسجل حضورًا بالبطاقة
+        r = client.post("/integrations/attendance", headers={"X-API-Key": api_key},
+                        json={"badge_code": "1002", "direction": "in"})
+        assert r.status_code == 200
+        day = client.get("/hr/attendance").json()
+        record = next(x for x in day["records"] if x["badge_code"] == "1002")
+        assert record["source"] == "device"
+        # بطاقة غير معروفة
+        assert client.post("/integrations/attendance", headers={"X-API-Key": api_key},
+                           json={"badge_code": "9999", "direction": "in"}).status_code == 404
+        # إيقاف المفتاح يمنع الجهاز
+        key_id = client.get("/integrations/keys", headers=admin_headers).json()[-1]["id"]
+        client.delete(f"/integrations/keys/{key_id}", headers=admin_headers)
+        assert client.post("/integrations/attendance", headers={"X-API-Key": api_key},
+                           json={"badge_code": "1003", "direction": "in"}).status_code == 401
+
+    def test_product_qrcode(self, client):
+        r = client.get("/integrations/qrcode/product/1")
+        assert r.status_code == 200
+        assert r.headers["content-type"] == "image/png"
+        assert r.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_excel_reports(self, client):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        for path in ["/reports/inventory.xlsx", "/reports/sales.xlsx",
+                     "/reports/journal.xlsx", "/reports/attendance.xlsx"]:
+            r = client.get(path)
+            assert r.status_code == 200, path
+            wb = load_workbook(BytesIO(r.content))
+            assert wb.active.max_row >= 1, path
+
+
 # ---------- الذكاء الاصطناعي ----------
 class TestAI:
     def test_assistant_fallback_engine(self, client):

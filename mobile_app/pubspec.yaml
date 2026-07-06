@@ -1,0 +1,16 @@
+name: smart_factory_supervisor
+description: تطبيق المشرفين لنظام Smart Factory ERP — مؤشرات المصنع والرؤى الذكية من الجوال
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  shared_preferences: ^2.2.0
+
+flutter:
+  uses-material-design: true

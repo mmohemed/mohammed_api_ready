@@ -23,38 +23,87 @@
     }
   }
   * { box-sizing: border-box; margin: 0; }
-  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--ink); }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page); color: var(--ink);
+    display: flex; min-height: 100vh;
+  }
 
-  /* ---------- الترويسة والتبويبات ---------- */
+  /* ---------- القائمة الجانبية الفخمة ---------- */
+  aside {
+    width: 232px; flex-shrink: 0; position: sticky; top: 0; height: 100vh;
+    background: linear-gradient(165deg, #101d33 0%, #0b1526 100%);
+    color: #dbe4f2; display: flex; flex-direction: column; padding: 18px 12px;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 20px; }
+  .brand .logo {
+    width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(135deg, #2a78d6, #7db4f0); font-size: 20px;
+    box-shadow: 0 4px 14px rgba(42,120,214,0.45);
+  }
+  .brand .t1 { font-weight: 800; font-size: 15px; color: #fff; }
+  .brand .t2 { font-size: 11px; color: #8fa3c4; }
+  nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  nav button {
+    font: inherit; font-size: 13.5px; padding: 10px 12px; border: none; background: none;
+    color: #aebdd6; cursor: pointer; border-radius: 10px; text-align: right;
+    display: flex; align-items: center; gap: 10px; transition: background .15s, color .15s;
+  }
+  nav button:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  nav button[aria-current="true"] {
+    background: linear-gradient(90deg, rgba(42,120,214,0.35), rgba(42,120,214,0.12));
+    color: #fff; font-weight: 700;
+    box-shadow: inset 3px 0 0 #4d95e8;
+  }
+  nav button .ic { font-size: 16px; width: 22px; text-align: center; }
+  .side-foot { font-size: 11px; color: #66799c; padding: 12px 10px 4px; }
+
+  /* ---------- منطقة المحتوى ---------- */
+  .shell { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   header {
-    background: var(--surface); border-bottom: 1px solid var(--border);
-    padding: 10px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
     position: sticky; top: 0; z-index: 20;
   }
-  header h1 { font-size: 17px; white-space: nowrap; }
-  nav { display: flex; gap: 2px; flex-wrap: wrap; flex: 1; }
-  nav button {
-    font: inherit; font-size: 13px; padding: 7px 13px; border: none; background: none;
-    color: var(--ink-2); cursor: pointer; border-radius: 8px;
-  }
-  nav button[aria-current="true"] { background: var(--page); color: var(--ink); font-weight: 700; }
+  header h1 { font-size: 17px; font-weight: 800; }
   .userbox { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-  .userbox .chip { padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--ink-2); }
+  .userbox .chip { padding: 4px 12px; border-radius: 99px; border: 1px solid var(--border); color: var(--ink-2); background: var(--surface); }
 
-  main { max-width: 1150px; margin: 0 auto; padding: 20px; }
+  main { max-width: 1150px; width: 100%; margin: 0 auto; padding: 22px 24px 40px; }
+
+  /* ---------- تجاوب الجوال ---------- */
+  @media (max-width: 900px) {
+    body { flex-direction: column; }
+    aside { width: 100%; height: auto; position: static; padding: 10px 12px; }
+    .brand { padding-bottom: 10px; }
+    nav { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+    nav button { white-space: nowrap; padding: 8px 12px; }
+    nav button[aria-current="true"] { box-shadow: inset 0 -3px 0 #4d95e8; }
+    .side-foot { display: none; }
+    main { padding: 16px 14px 40px; }
+  }
 
   /* ---------- أزرار ---------- */
   .btn {
     font: inherit; font-size: 13px; padding: 8px 16px; border-radius: 8px; cursor: pointer;
     border: 1px solid var(--border); background: var(--surface); color: var(--ink);
   }
-  .btn.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+  .btn.primary {
+    background: linear-gradient(135deg, #2a78d6, #3f8de4); border-color: transparent; color: #fff;
+    box-shadow: 0 2px 8px rgba(42,120,214,0.35);
+  }
   .btn.danger { background: var(--danger-bg); border-color: var(--critical); color: var(--critical); }
   .btn.small { padding: 4px 10px; font-size: 12px; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ---------- بطاقات وجداول ---------- */
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(15,30,60,0.06);
+  }
   .card h2 { font-size: 15px; margin-bottom: 4px; }
   .card .desc { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
   .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -71,7 +120,12 @@
 
   /* ---------- KPI ---------- */
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 15px 17px; box-shadow: 0 1px 3px rgba(15,30,60,0.06);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .tile:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(15,30,60,0.12); }
   .tile .label { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
   .tile .value { font-size: 25px; font-weight: 600; }
   .tile .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
@@ -149,13 +203,25 @@
 </head>
 <body>
 
-<header>
-  <h1>🏭 Smart Factory ERP</h1>
+<aside>
+  <div class="brand">
+    <div class="logo">🏭</div>
+    <div>
+      <div class="t1">Smart Factory</div>
+      <div class="t2">نظام ERP ذكي للمصانع</div>
+    </div>
+  </div>
   <nav id="nav"></nav>
-  <div class="userbox" id="userbox"></div>
-</header>
+  <div class="side-foot">مدعوم بالذكاء الاصطناعي 🤖</div>
+</aside>
 
-<main id="view"></main>
+<div class="shell">
+  <header>
+    <h1 id="page-title"></h1>
+    <div class="userbox" id="userbox"></div>
+  </header>
+  <main id="view"></main>
+</div>
 
 <div class="modal-back" id="modal-back">
   <div class="modal" id="modal"></div>
@@ -541,8 +607,17 @@ async function viewDashboard(container) {
 async function viewInventory(container) {
   const addBtn = actionBtn("＋ إضافة منتج", "primary", () => productForm());
   addBtn.disabled = !canWrite();
-  container.appendChild(toolbar("📦 المخزون", [addBtn]));
+  const excelBtn = actionBtn("⬇ تقرير Excel", "", () => window.open("/reports/inventory.xlsx", "_blank"));
+  container.appendChild(toolbar("📦 المخازن", [excelBtn, addBtn]));
   writeGate(container);
+
+  /* بحث فوري + دعم ماسح الباركود (القارئ يكتب الرمز ويضغط Enter تلقائيًا) */
+  const searchCard = document.createElement("div"); searchCard.className = "card";
+  const search = document.createElement("input");
+  search.placeholder = "🔎 ابحث بالاسم أو امسح الباركود/QR بالقارئ...";
+  search.style.fontSize = "15px";
+  searchCard.appendChild(search);
+  container.appendChild(searchCard);
 
   const products = await api("/inventory/products");
   const card = document.createElement("div"); card.className = "card";
@@ -562,6 +637,8 @@ async function viewInventory(container) {
       badge.textContent = low ? "⚠️ أعد الطلب" : "✅ متوفر";
       status.appendChild(badge); tr.appendChild(status);
       const actions = document.createElement("td"); actions.className = "actions";
+      actions.appendChild(actionBtn("QR", "", () =>
+        window.open(`/integrations/qrcode/product/${p.id}`, "_blank")));
       if (canWrite()) {
         actions.append(
           actionBtn("± كمية", "", () => adjustForm(p)),
@@ -574,10 +651,20 @@ async function viewInventory(container) {
         );
       }
       tr.appendChild(actions);
+      tr.dataset.search = (p.name + " " + p.sku).toLowerCase();
       return tr;
     }
   ));
   container.appendChild(card);
+
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+    card.querySelectorAll("tbody tr").forEach(tr => {
+      tr.style.display = !q || tr.dataset.search.includes(q) ? "" : "none";
+    });
+  });
+  search.addEventListener("keydown", e => { if (e.key === "Enter") e.preventDefault(); });
+  search.focus();
 
   async function bomModal(p) {
     const rawMaterials = products.filter(x => x.product_type === "raw");
@@ -851,7 +938,8 @@ async function viewProduction(container) {
 async function viewSales(container) {
   const addBtn = actionBtn("＋ طلب بيع جديد", "primary", () => saleForm());
   addBtn.disabled = !canWrite();
-  container.appendChild(toolbar("💰 المبيعات وتوقع الطلب", [addBtn]));
+  const excelBtn = actionBtn("⬇ تقرير Excel", "", () => window.open("/reports/sales.xlsx", "_blank"));
+  container.appendChild(toolbar("💰 المبيعات وتوقع الطلب", [excelBtn, addBtn]));
   writeGate(container);
 
   const [orders, products] = await Promise.all([api("/sales/orders"), api("/inventory/products")]);
@@ -927,6 +1015,64 @@ async function viewSales(container) {
       },
     });
   }
+}
+
+/* =========================================================
+   شاشة: الجودة
+   ========================================================= */
+async function viewQuality(container) {
+  container.appendChild(toolbar("🔍 مراقبة الجودة"));
+  const [orders, products, anomalies] = await Promise.all([
+    api("/production/orders"), api("/inventory/products"), api("/production/quality/anomalies"),
+  ]);
+  const productName = id => products.find(p => p.id === id)?.name ?? ("#" + id);
+  const anomalyIds = new Set((anomalies.anomalies || []).map(a => a.order_id));
+  const completed = orders.filter(o => o.status === "completed");
+  const produced = completed.reduce((s, o) => s + o.produced_quantity, 0);
+  const defective = completed.reduce((s, o) => s + o.defective_quantity, 0);
+
+  const kpis = document.createElement("div"); kpis.className = "kpis";
+  const tiles = [
+    ["نسبة العيوب الإجمالية", produced ? (defective / produced * 100).toFixed(1) + "٪" : "—",
+     fmt(defective) + " معيب من " + fmt(produced)],
+    ["أوامر مكتملة", fmt(completed.length), ""],
+    ["أوامر بجودة شاذة 🚨", fmt(anomalies.anomalies_found ?? 0), "مكتشفة بالذكاء الاصطناعي"],
+  ];
+  for (const [label, value, hint] of tiles) {
+    const t = document.createElement("div"); t.className = "tile";
+    for (const [cls, text] of [["label", label], ["value", value], ["hint", hint]]) {
+      const el = document.createElement("div"); el.className = cls; el.textContent = text; t.appendChild(el);
+    }
+    kpis.appendChild(t);
+  }
+  container.appendChild(kpis);
+
+  const msg = document.createElement("div"); msg.className = "card";
+  const msgP = document.createElement("p"); msgP.style.fontSize = "14px";
+  msgP.textContent = anomalies.message || "";
+  msg.appendChild(msgP);
+  container.appendChild(msg);
+
+  const card = document.createElement("div"); card.className = "card";
+  card.appendChild(Object.assign(document.createElement("h2"), { textContent: "سجل جودة أوامر الإنتاج" }));
+  card.appendChild(buildTable(
+    ["#", "المنتج", "المخطط", "المنتَج", "المعيب", "نسبة العيوب", "تقييم الذكاء الاصطناعي"],
+    [...completed].sort((a, b) => b.id - a.id),
+    o => {
+      const tr = document.createElement("tr");
+      const rate = o.produced_quantity ? (o.defective_quantity / o.produced_quantity * 100) : 0;
+      tr.append(td(o.id, "num"), td(productName(o.product_id)),
+                td(fmt(o.planned_quantity), "num"), td(fmt(o.produced_quantity), "num"),
+                td(fmt(o.defective_quantity), "num"), td(rate.toFixed(1) + "٪", "num"));
+      const cell = document.createElement("td");
+      const badge = document.createElement("span");
+      badge.className = "badge" + (anomalyIds.has(o.id) ? " low" : "");
+      badge.textContent = anomalyIds.has(o.id) ? "🚨 شاذ — راجع الخط" : "✅ سليم";
+      cell.appendChild(badge); tr.appendChild(cell);
+      return tr;
+    }
+  ));
+  container.appendChild(card);
 }
 
 /* =========================================================
@@ -1083,7 +1229,8 @@ async function viewPurchases(container) {
    شاشة: المحاسبة
    ========================================================= */
 async function viewAccounting(container) {
-  container.appendChild(toolbar("🧾 المحاسبة"));
+  const excelBtn = actionBtn("⬇ تقرير القيود Excel", "", () => window.open("/reports/journal.xlsx", "_blank"));
+  container.appendChild(toolbar("🧾 المحاسبة", [excelBtn]));
   const [summary, invoices, journal] = await Promise.all([
     api("/accounting/summary"), api("/accounting/invoices"), api("/accounting/journal"),
   ]);
@@ -1148,18 +1295,60 @@ async function viewAccounting(container) {
 async function viewEmployees(container) {
   const addBtn = actionBtn("＋ إضافة موظف", "primary", () => employeeForm());
   addBtn.disabled = !canWrite();
-  container.appendChild(toolbar("👥 الموظفون", [addBtn]));
+  const excelBtn = actionBtn("⬇ تقرير حضور Excel", "", () => window.open("/reports/attendance.xlsx", "_blank"));
+  container.appendChild(toolbar("👥 الموارد البشرية", [excelBtn, addBtn]));
   writeGate(container);
 
-  const employees = await api("/employees");
+  const [employees, attendance] = await Promise.all([api("/employees"), api("/hr/attendance")]);
+
+  /* الحضور اليوم */
+  const attCard = document.createElement("div"); attCard.className = "card";
+  attCard.appendChild(Object.assign(document.createElement("h2"),
+    { textContent: `🕐 حضور اليوم (${attendance.date}) — الحاضرون: ${attendance.present} من ${attendance.records.length}` }));
+  const attDesc = document.createElement("p"); attDesc.className = "desc";
+  attDesc.textContent = "يُسجَّل يدويًا من هنا أو تلقائيًا من أجهزة البصمة عبر مفاتيح التكامل (شاشة المستخدمون).";
+  attCard.appendChild(attDesc);
+  attCard.appendChild(buildTable(
+    ["الموظف", "القسم", "البطاقة", "الحضور", "الانصراف", "الساعات", "الحالة", "إجراء"],
+    attendance.records,
+    r => {
+      const tr = document.createElement("tr");
+      tr.append(td(r.name), td(r.department), td(r.badge_code || "—"),
+                td(r.check_in ? r.check_in.slice(11, 16) : "—"),
+                td(r.check_out ? r.check_out.slice(11, 16) : "—"),
+                td(r.hours ?? "—", "num"));
+      const st = document.createElement("td"); const badge = document.createElement("span");
+      badge.className = "badge"; badge.textContent = r.status;
+      st.appendChild(badge); tr.appendChild(st);
+      const actions = document.createElement("td"); actions.className = "actions";
+      if (canWrite()) {
+        if (!r.check_in)
+          actions.appendChild(actionBtn("تسجيل حضور", "primary", async () => {
+            await api(`/hr/attendance/${r.employee_id}/in`, { method: "POST" });
+            toast("سُجّل الحضور"); render();
+          }));
+        else if (!r.check_out)
+          actions.appendChild(actionBtn("تسجيل انصراف", "", async () => {
+            await api(`/hr/attendance/${r.employee_id}/out`, { method: "POST" });
+            toast("سُجّل الانصراف"); render();
+          }));
+      }
+      tr.appendChild(actions);
+      return tr;
+    }
+  ));
+  container.appendChild(attCard);
+
+  /* الموظفون */
   const card = document.createElement("div"); card.className = "card";
+  card.appendChild(Object.assign(document.createElement("h2"), { textContent: "سجل الموظفين" }));
   card.appendChild(buildTable(
-    ["#", "الاسم", "الوظيفة", "القسم", "الراتب", "تاريخ التعيين", "إجراءات"],
+    ["#", "الاسم", "الوظيفة", "القسم", "الراتب", "بطاقة البصمة", "إجراءات"],
     employees,
     e => {
       const tr = document.createElement("tr");
       tr.append(td(e.id, "num"), td(e.name), td(e.role), td(e.department),
-                td(fmt(e.salary), "num"), td(e.hired_at.slice(0, 10)));
+                td(fmt(e.salary), "num"), td(e.badge_code || "—"));
       const actions = document.createElement("td"); actions.className = "actions";
       if (canWrite()) {
         actions.append(
@@ -1184,8 +1373,10 @@ async function viewEmployees(container) {
         { name: "role", label: "الوظيفة", value: e?.role ?? "عامل إنتاج" },
         { name: "department", label: "القسم", value: e?.department ?? "الإنتاج" },
         { name: "salary", label: "الراتب الشهري", type: "number", value: e?.salary ?? 0 },
+        { name: "badge_code", label: "رقم بطاقة البصمة (لأجهزة الحضور)", value: e?.badge_code ?? "" },
       ],
       onSubmit: async v => {
+        if (!v.badge_code) v.badge_code = null;
         if (e) { await api("/employees/" + e.id, { method: "PUT", body: v }); toast("تم تحديث الموظف"); }
         else { await api("/employees", { method: "POST", body: v }); toast("تمت إضافة الموظف"); }
         render();
@@ -1225,6 +1416,55 @@ async function viewUsers(container) {
   card.appendChild(roles);
   container.appendChild(card);
 
+  /* مفاتيح التكامل (أجهزة البصمة والأنظمة الخارجية) */
+  const keys = await api("/integrations/keys");
+  const keysCard = document.createElement("div"); keysCard.className = "card";
+  const keysBar = document.createElement("div"); keysBar.className = "toolbar";
+  keysBar.appendChild(Object.assign(document.createElement("h2"), { textContent: "🔌 مفاتيح التكامل (أجهزة البصمة والأنظمة الخارجية)" }));
+  keysBar.appendChild(actionBtn("＋ مفتاح جديد", "primary", () => showForm({
+    title: "إنشاء مفتاح تكامل",
+    fields: [{ name: "name", label: "اسم الجهاز/النظام", required: true, placeholder: "مثال: جهاز بصمة البوابة 1" }],
+    submitLabel: "إنشاء",
+    onSubmit: async v => {
+      const result = await api("/integrations/keys", { method: "POST", body: v });
+      closeModal();
+      modalBox.replaceChildren();
+      const h = document.createElement("h3"); h.textContent = "⚠️ احفظ المفتاح الآن — لن يُعرض مرة أخرى";
+      const code = document.createElement("input"); code.value = result.api_key; code.readOnly = true;
+      code.style.direction = "ltr"; code.style.fontFamily = "monospace";
+      code.addEventListener("click", () => code.select());
+      const hint = document.createElement("p"); hint.className = "desc"; hint.style.marginTop = "10px";
+      hint.textContent = "يرسله الجهاز في ترويسة X-API-Key إلى POST /integrations/attendance";
+      const row = document.createElement("div"); row.className = "row";
+      const done = document.createElement("button"); done.className = "btn primary"; done.textContent = "تم الحفظ";
+      done.addEventListener("click", () => { closeModal(); render(); });
+      row.appendChild(done);
+      modalBox.append(h, code, hint, row);
+      modalBack.classList.add("open");
+    },
+  })));
+  keysCard.appendChild(keysBar);
+  const keysDesc = document.createElement("p"); keysDesc.className = "desc";
+  keysDesc.textContent = "تربط أجهزة البصمة وقارئات البطاقات بالنظام: يرسل الجهاز {badge_code, direction} إلى POST /integrations/attendance مع المفتاح.";
+  keysCard.appendChild(keysDesc);
+  keysCard.appendChild(buildTable(
+    ["#", "الاسم", "المفتاح", "الحالة", "أُنشئ", "إجراء"],
+    keys,
+    k => {
+      const tr = document.createElement("tr");
+      tr.append(td(k.id, "num"), td(k.name), td(k.prefix), td(k.active ? "✅ فعّال" : "✖ موقوف"),
+                td(k.created_at.slice(0, 10)));
+      const cell = document.createElement("td");
+      if (k.active) cell.appendChild(actionBtn("إيقاف", "danger", async () => {
+        await api("/integrations/keys/" + k.id, { method: "DELETE" });
+        toast("أُوقف المفتاح"); render();
+      }));
+      tr.appendChild(cell);
+      return tr;
+    }
+  ));
+  container.appendChild(keysCard);
+
   function userForm() {
     const DEPARTMENTS = ["الإدارة", "المبيعات", "المشتريات", "المخازن",
                          "الإنتاج", "الجودة", "المحاسبة", "الموارد البشرية"];
@@ -1257,15 +1497,16 @@ async function viewUsers(container) {
    التنقّل والتشغيل
    ========================================================= */
 const VIEWS = [
-  { id: "dashboard", label: "لوحة التحكم", render: viewDashboard },
-  { id: "inventory", label: "المخزون", render: viewInventory },
-  { id: "machines", label: "الآلات", render: viewMachines },
-  { id: "production", label: "الإنتاج", render: viewProduction },
-  { id: "sales", label: "المبيعات", render: viewSales },
-  { id: "purchases", label: "المشتريات", render: viewPurchases },
-  { id: "accounting", label: "المحاسبة", render: viewAccounting },
-  { id: "employees", label: "الموظفون", render: viewEmployees },
-  { id: "users", label: "المستخدمون", render: viewUsers },
+  { id: "dashboard", label: "لوحة التحكم", icon: "📊", render: viewDashboard },
+  { id: "inventory", label: "المخازن", icon: "📦", render: viewInventory },
+  { id: "machines", label: "الآلات", icon: "⚙️", render: viewMachines },
+  { id: "production", label: "الإنتاج", icon: "🏗️", render: viewProduction },
+  { id: "quality", label: "الجودة", icon: "🔍", render: viewQuality },
+  { id: "sales", label: "المبيعات", icon: "💰", render: viewSales },
+  { id: "purchases", label: "المشتريات", icon: "🚚", render: viewPurchases },
+  { id: "accounting", label: "المحاسبة", icon: "🧾", render: viewAccounting },
+  { id: "employees", label: "الموارد البشرية", icon: "👥", render: viewEmployees },
+  { id: "users", label: "المستخدمون", icon: "🔐", render: viewUsers },
 ];
 let currentView = location.hash.replace("#", "") || "dashboard";
 if (!VIEWS.some(v => v.id === currentView)) currentView = "dashboard";
@@ -1275,7 +1516,9 @@ function renderNav() {
   nav.replaceChildren();
   for (const v of VIEWS) {
     const b = document.createElement("button");
-    b.textContent = v.label;
+    const ic = document.createElement("span"); ic.className = "ic"; ic.textContent = v.icon;
+    const label = document.createElement("span"); label.textContent = v.label;
+    b.append(ic, label);
     b.setAttribute("aria-current", v.id === currentView);
     b.addEventListener("click", () => { currentView = v.id; location.hash = v.id; renderNav(); render(); });
     nav.appendChild(b);
@@ -1286,6 +1529,7 @@ async function render() {
   const container = document.getElementById("view");
   container.replaceChildren();
   const view = VIEWS.find(v => v.id === currentView);
+  document.getElementById("page-title").textContent = view.icon + " " + view.label;
   try { await view.render(container); }
   catch (e) {
     const err = document.createElement("p"); err.className = "empty";
