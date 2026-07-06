@@ -6,9 +6,9 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import models, schemas, workflow
 from ..ai.anomaly_detection import detect_production_anomalies
-from ..auth import require_writer
+from ..auth import require_department
 from ..database import get_db
 
 router = APIRouter(prefix="/production", tags=["الإنتاج والجودة"])
@@ -16,13 +16,18 @@ router = APIRouter(prefix="/production", tags=["الإنتاج والجودة"])
 
 @router.post("/orders", response_model=schemas.ProductionOrderOut)
 def create_order(order: schemas.ProductionOrderCreate, db: Session = Depends(get_db),
-                 _: object = Depends(require_writer)):
+                 _: object = Depends(require_department("الإنتاج"))):
     if not db.get(models.Product, order.product_id):
         raise HTTPException(status_code=404, detail="المنتج غير موجود")
     if order.machine_id and not db.get(models.Machine, order.machine_id):
         raise HTTPException(status_code=404, detail="الآلة غير موجودة")
     row = models.ProductionOrder(**order.model_dump(), status="in_progress")
     db.add(row)
+    db.flush()
+    # فحص المواد الخام تلقائيًا وإنشاء طلبات شراء للنواقص
+    workflow.auto_request_components(
+        db, row.product_id, row.planned_quantity, reference=f"أمر الإنتاج #{row.id}"
+    )
     db.commit()
     db.refresh(row)
     return row
@@ -35,7 +40,7 @@ def list_orders(db: Session = Depends(get_db)):
 
 @router.post("/orders/{order_id}/complete", response_model=schemas.ProductionOrderOut)
 def complete_order(order_id: int, report: schemas.ProductionReport, db: Session = Depends(get_db),
-                 _: object = Depends(require_writer)):
+                 _: object = Depends(require_department("الإنتاج"))):
     """إكمال أمر إنتاج: تسجيل الكمية المنتجة والمعيبة وإضافة الصافي للمخزون."""
     order = db.get(models.ProductionOrder, order_id)
     if not order:
@@ -45,12 +50,22 @@ def complete_order(order_id: int, report: schemas.ProductionReport, db: Session 
     if report.defective_quantity > report.produced_quantity:
         raise HTTPException(status_code=400, detail="الكمية المعيبة لا يمكن أن تتجاوز المنتجة")
 
+    # التأكد من توفر المواد الخام قبل الإتمام
+    shortages = workflow.check_components_shortage(db, order.product_id, report.produced_quantity)
+    if shortages:
+        names = "، ".join(f"{s['component'].name} (ناقص {s['shortage']:g})" for s in shortages)
+        raise HTTPException(
+            status_code=400,
+            detail=f"مواد خام غير كافية لإتمام الإنتاج: {names} — استلم أوامر الشراء أولًا",
+        )
+
     order.produced_quantity = report.produced_quantity
     order.defective_quantity = report.defective_quantity
     order.status = "completed"
     order.completed_at = datetime.utcnow()
 
-    # الوحدات السليمة تدخل المخزون
+    # خصم المواد الخام حسب مكونات المنتج، وإدخال الوحدات السليمة للمخزون
+    workflow.consume_components(db, order.product_id, report.produced_quantity)
     product = db.get(models.Product, order.product_id)
     product.quantity += report.produced_quantity - report.defective_quantity
 

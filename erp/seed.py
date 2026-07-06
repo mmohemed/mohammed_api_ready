@@ -7,7 +7,18 @@ from datetime import datetime, timedelta
 
 from .auth import hash_password
 from .database import Base, SessionLocal, engine
-from .models import Employee, Machine, Product, ProductionOrder, SalesOrder, SensorReading, User
+from .models import (
+    BOMItem,
+    Employee,
+    Machine,
+    Product,
+    ProductionOrder,
+    PurchaseOrder,
+    SalesOrder,
+    SensorReading,
+    Supplier,
+    User,
+)
 
 
 def seed():
@@ -20,10 +31,19 @@ def seed():
 
         random.seed(7)
 
-        # ---------- مستخدم افتراضي ----------
+        # ---------- المستخدمون: حساب لكل قسم ----------
         if db.query(User).count() == 0:
             db.add(User(username="admin", full_name="مدير النظام",
-                        password_hash=hash_password("admin123"), role="admin"))
+                        password_hash=hash_password("admin123"), role="admin", department="الإدارة"))
+            department_users = [
+                ("sales", "المبيعات"), ("purchasing", "المشتريات"),
+                ("warehouse", "المخازن"), ("production", "الإنتاج"),
+                ("quality", "الجودة"), ("accounting", "المحاسبة"), ("hr", "الموارد البشرية"),
+            ]
+            for username, department in department_users:
+                db.add(User(username=username, full_name=f"مسؤول {department}",
+                            password_hash=hash_password(f"{username}123"),
+                            role="user", department=department))
 
         # ---------- منتجات ----------
         products = [
@@ -38,6 +58,42 @@ def seed():
         ]
         db.add_all(products)
         db.flush()
+
+        # ---------- المواد الخام ----------
+        raw_materials = [
+            Product(name="حبيبات PVC خام", sku="RAW-PVC", category="مواد خام",
+                    product_type="raw", quantity=2000, reorder_point=500,
+                    unit_cost=4, unit_price=0, unit="كجم"),
+            Product(name="سبيكة ألمنيوم", sku="RAW-ALU", category="مواد خام",
+                    product_type="raw", quantity=800, reorder_point=200,
+                    unit_cost=20, unit_price=0, unit="كجم"),
+            Product(name="نحاس خام", sku="RAW-CU", category="مواد خام",
+                    product_type="raw", quantity=1500, reorder_point=400,
+                    unit_cost=5, unit_price=0, unit="كجم"),
+            Product(name="بولي إيثيلين", sku="RAW-PE", category="مواد خام",
+                    product_type="raw", quantity=600, reorder_point=150,
+                    unit_cost=6, unit_price=0, unit="كجم"),
+        ]
+        db.add_all(raw_materials)
+        db.flush()
+
+        # ---------- مكونات المنتجات (BOM) ----------
+        db.add_all([
+            BOMItem(product_id=products[0].id, component_id=raw_materials[0].id, quantity_per_unit=0.8),   # أنبوب PVC ← حبيبات
+            BOMItem(product_id=products[1].id, component_id=raw_materials[1].id, quantity_per_unit=2.5),   # صفيحة ← سبيكة ألمنيوم
+            BOMItem(product_id=products[2].id, component_id=raw_materials[2].id, quantity_per_unit=0.05),  # كابل ← نحاس
+            BOMItem(product_id=products[3].id, component_id=raw_materials[3].id, quantity_per_unit=18),    # خزان ← بولي إيثيلين
+        ])
+
+        # ---------- الموردون وأمر شراء تجريبي ----------
+        suppliers = [
+            Supplier(name="شركة البتروكيماويات المتحدة", phone="0501111111", email="sales@petro.example"),
+            Supplier(name="مؤسسة المعادن الوطنية", phone="0502222222", email="orders@metals.example"),
+        ]
+        db.add_all(suppliers)
+        db.flush()
+        db.add(PurchaseOrder(supplier_id=suppliers[0].id, product_id=raw_materials[0].id,
+                             quantity=500, unit_cost=3.8, status="ordered"))
 
         # ---------- آلات ----------
         machines = [
@@ -117,8 +173,12 @@ def seed():
         db.commit()
         print("✅ تم إنشاء البيانات التجريبية بنجاح:")
         print(f"   - {len(products)} منتجات، {len(machines)} آلات مع قراءات حساسات")
+        print("   - 4 مواد خام + مكونات المنتجات (BOM) + مورّدان وأمر شراء")
         print("   - 90 يومًا من المبيعات، 12 أمر إنتاج، 5 موظفين")
-        print("   - مستخدم افتراضي: admin / admin123 ⚠️ غيّر كلمة المرور في الإنتاج")
+        print("   - المستخدمون: admin/admin123 (إدارة) + حساب لكل قسم:")
+        print("     sales/sales123 · purchasing/purchasing123 · warehouse/warehouse123")
+        print("     production/production123 · quality/quality123 · accounting/accounting123 · hr/hr123")
+        print("   ⚠️ غيّر كلمات المرور في الإنتاج")
     finally:
         db.close()
 

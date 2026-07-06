@@ -150,10 +150,16 @@ class TestProductionAndSales:
         assert data["status"] == "ok"
         assert data["anomalies_found"] >= 2  # أمران شاذان مزروعان في seed
 
-    def test_oversell_rejected(self, client, admin_headers):
-        response = client.post("/sales/orders", headers=admin_headers,
-                               json={"product_id": 1, "quantity": 10**9})
-        assert response.status_code == 400
+    def test_oversell_triggers_auto_production(self, client, admin_headers):
+        """بيع فوق المتاح ← طلب بانتظار الإنتاج + أمر إنتاج تلقائي للعجز"""
+        stock = client.get("/inventory/products/1").json()["quantity"]
+        order = client.post("/sales/orders", headers=admin_headers,
+                            json={"product_id": 1, "quantity": stock + 500}).json()
+        assert order["status"] == "pending_production"
+        auto = [o for o in client.get("/production/orders").json()
+                if o.get("sales_order_id") == order["id"]]
+        assert len(auto) == 1 and auto[0]["source"] == "auto"
+        assert auto[0]["planned_quantity"] == 500
 
     def test_sale_deducts_stock(self, client, admin_headers):
         before = client.get("/inventory/products/1").json()["quantity"]
@@ -165,6 +171,114 @@ class TestProductionAndSales:
         data = client.get("/sales/forecast/1?days_ahead=30").json()
         assert data["status"] == "ok"
         assert data["expected_total_demand"] > 0
+
+
+# ---------- السلسلة التلقائية والمحاسبة والمشتريات ----------
+class TestWorkflow:
+    def test_departments_permissions(self, client, admin_headers):
+        """مستخدم قسم المبيعات يبيع لكنه لا يضيف منتجات (قسم المخازن)"""
+        login = client.post("/auth/login", json={"username": "sales", "password": "sales123"})
+        assert login.status_code == 200
+        sales_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+        ok = client.post("/sales/orders", headers=sales_headers,
+                         json={"product_id": 1, "quantity": 1})
+        assert ok.status_code == 200
+        denied = client.post("/inventory/products", headers=sales_headers,
+                             json={"name": "x", "sku": "DENY-1"})
+        assert denied.status_code == 403
+
+    def test_deliver_issues_invoice_and_journal(self, client, admin_headers):
+        order = client.post("/sales/orders", headers=admin_headers,
+                            json={"product_id": 1, "quantity": 3, "customer_name": "عميل الفاتورة"}).json()
+        assert order["status"] == "confirmed"
+        result = client.post(f"/sales/orders/{order['id']}/deliver", headers=admin_headers).json()
+        assert result["invoice_number"].startswith("INV-")
+        invoices = client.get("/accounting/invoices").json()
+        assert any(i["number"] == result["invoice_number"] for i in invoices)
+        journal = client.get("/accounting/journal").json()
+        refs = [e for e in journal if e["reference"] == result["invoice_number"]]
+        assert any(e["entry_type"] == "sale" for e in refs)
+        assert any(e["entry_type"] == "cogs" for e in refs)
+        # الفاتورة قابلة للطباعة
+        inv_id = next(i["id"] for i in invoices if i["number"] == result["invoice_number"])
+        printable = client.get(f"/accounting/invoices/{inv_id}/print")
+        assert printable.status_code == 200 and "فاتورة" in printable.text
+
+    def test_full_auto_chain(self, client, admin_headers):
+        """السلسلة الكاملة: بيع بعجز ← إنتاج تلقائي ← نقص مواد خام ← طلب شراء تلقائي
+        ← اعتماد واستلام ← إكمال الإنتاج ← تسليم وفاتورة"""
+        # منتج جديد بمخزون صفر + مادة خام شحيحة + BOM
+        raw = client.post("/inventory/products", headers=admin_headers, json={
+            "name": "مادة خام للاختبار", "sku": "RAW-T1", "product_type": "raw",
+            "quantity": 5, "unit_cost": 2}).json()
+        finished = client.post("/inventory/products", headers=admin_headers, json={
+            "name": "منتج السلسلة", "sku": "CHAIN-1", "quantity": 0, "unit_price": 50}).json()
+        client.post(f"/inventory/products/{finished['id']}/bom", headers=admin_headers,
+                    json={"component_id": raw["id"], "quantity_per_unit": 2})
+
+        # 1) بيع 10 والمخزون صفر ← pending_production
+        sale = client.post("/sales/orders", headers=admin_headers,
+                           json={"product_id": finished["id"], "quantity": 10}).json()
+        assert sale["status"] == "pending_production"
+
+        # 2) أمر إنتاج تلقائي أُنشئ
+        production = next(o for o in client.get("/production/orders").json()
+                          if o.get("sales_order_id") == sale["id"])
+
+        # 3) المواد الخام لا تكفي (نحتاج 20 والمتاح 5) ← طلب شراء تلقائي
+        auto_po = next(p for p in client.get("/purchases/orders").json()
+                       if p["product_id"] == raw["id"] and p["source"] == "auto")
+        assert auto_po["status"] == "requested" and auto_po["supplier_id"] is None
+
+        # 4) لا يمكن إكمال الإنتاج قبل توفر المواد
+        blocked = client.post(f"/production/orders/{production['id']}/complete",
+                              headers=admin_headers,
+                              json={"produced_quantity": 10, "defective_quantity": 0})
+        assert blocked.status_code == 400
+
+        # 5) قسم المشتريات يعتمد الطلب ويستلمه
+        supplier_id = client.get("/purchases/suppliers").json()[0]["id"]
+        approved = client.post(f"/purchases/orders/{auto_po['id']}/approve", headers=admin_headers,
+                               json={"supplier_id": supplier_id}).json()
+        assert approved["status"] == "ordered"
+        received = client.post(f"/purchases/orders/{auto_po['id']}/receive", headers=admin_headers).json()
+        assert received["status"] == "received"
+
+        # 6) الآن يكتمل الإنتاج: تُستهلك المواد ويدخل المنتج للمخزون
+        raw_before = client.get(f"/inventory/products/{raw['id']}").json()["quantity"]
+        done = client.post(f"/production/orders/{production['id']}/complete", headers=admin_headers,
+                           json={"produced_quantity": 10, "defective_quantity": 0})
+        assert done.status_code == 200
+        raw_after = client.get(f"/inventory/products/{raw['id']}").json()["quantity"]
+        assert raw_after == raw_before - 20  # استهلاك BOM: 2 لكل وحدة
+
+        # 7) التسليم: فاتورة + قيود
+        delivered = client.post(f"/sales/orders/{sale['id']}/deliver", headers=admin_headers)
+        assert delivered.status_code == 200
+        assert delivered.json()["invoice_number"].startswith("INV-")
+
+    def test_purchase_receipt_creates_journal_entry(self, client, admin_headers):
+        supplier_id = client.get("/purchases/suppliers").json()[0]["id"]
+        po = client.post("/purchases/orders", headers=admin_headers, json={
+            "supplier_id": supplier_id, "product_id": 1, "quantity": 10, "unit_cost": 7}).json()
+        client.post(f"/purchases/orders/{po['id']}/receive", headers=admin_headers)
+        journal = client.get("/accounting/journal").json()
+        assert any(e["reference"] == f"PO-{po['id']}" and e["entry_type"] == "purchase"
+                   for e in journal)
+
+    def test_financial_summary(self, client):
+        summary = client.get("/accounting/summary").json()
+        assert summary["revenue"] > 0
+        assert "gross_profit" in summary
+
+    def test_supplier_crud(self, client, admin_headers):
+        created = client.post("/purchases/suppliers", headers=admin_headers,
+                              json={"name": "مورد اختبار"}).json()
+        updated = client.put(f"/purchases/suppliers/{created['id']}", headers=admin_headers,
+                             json={"phone": "0555"}).json()
+        assert updated["phone"] == "0555"
+        assert client.delete(f"/purchases/suppliers/{created['id']}",
+                             headers=admin_headers).status_code == 200
 
 
 # ---------- الذكاء الاصطناعي ----------

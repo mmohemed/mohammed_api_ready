@@ -16,7 +16,17 @@ from fastapi.responses import FileResponse
 
 from .ai.predictive_maintenance import get_model
 from .database import Base, engine
-from .routers import auth, dashboard, employees, inventory, machines, production, sales
+from .routers import (
+    accounting,
+    auth,
+    dashboard,
+    employees,
+    inventory,
+    machines,
+    production,
+    purchases,
+    sales,
+)
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -47,6 +57,8 @@ app.include_router(inventory.router)
 app.include_router(machines.router)
 app.include_router(production.router)
 app.include_router(sales.router)
+app.include_router(purchases.router)
+app.include_router(accounting.router)
 app.include_router(employees.router)
 
 

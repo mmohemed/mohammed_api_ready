@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..ai.predictive_maintenance import predict_failure
-from ..auth import require_writer
+from ..auth import require_department
 from ..database import get_db
 
 router = APIRouter(prefix="/machines", tags=["الآلات والصيانة"])
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/machines", tags=["الآلات والصيانة"])
 
 @router.post("", response_model=schemas.MachineOut)
 def create_machine(machine: schemas.MachineCreate, db: Session = Depends(get_db),
-                 _: object = Depends(require_writer)):
+                 _: object = Depends(require_department("الإنتاج"))):
     row = models.Machine(**machine.model_dump())
     db.add(row)
     db.commit()
@@ -31,7 +31,7 @@ def list_machines(db: Session = Depends(get_db)):
 
 @router.put("/{machine_id}", response_model=schemas.MachineOut)
 def update_machine(machine_id: int, changes: schemas.MachineUpdate, db: Session = Depends(get_db),
-                   _: object = Depends(require_writer)):
+                   _: object = Depends(require_department("الإنتاج"))):
     machine = db.get(models.Machine, machine_id)
     if not machine:
         raise HTTPException(status_code=404, detail="الآلة غير موجودة")
@@ -44,7 +44,7 @@ def update_machine(machine_id: int, changes: schemas.MachineUpdate, db: Session 
 
 @router.delete("/{machine_id}")
 def delete_machine(machine_id: int, db: Session = Depends(get_db),
-                   _: object = Depends(require_writer)):
+                   _: object = Depends(require_department("الإنتاج"))):
     machine = db.get(models.Machine, machine_id)
     if not machine:
         raise HTTPException(status_code=404, detail="الآلة غير موجودة")
@@ -89,7 +89,7 @@ def machines_risk_overview(db: Session = Depends(get_db)):
 
 @router.post("/{machine_id}/readings", response_model=schemas.SensorReadingOut)
 def add_reading(machine_id: int, reading: schemas.SensorReadingCreate, db: Session = Depends(get_db),
-                 _: object = Depends(require_writer)):
+                 _: object = Depends(require_department("الإنتاج"))):
     if not db.get(models.Machine, machine_id):
         raise HTTPException(status_code=404, detail="الآلة غير موجودة")
     row = models.SensorReading(machine_id=machine_id, **reading.model_dump())
@@ -134,7 +134,7 @@ def machine_failure_prediction(machine_id: int, db: Session = Depends(get_db)):
 
 @router.post("/{machine_id}/maintenance-done", response_model=schemas.MachineOut)
 def mark_maintenance_done(machine_id: int, db: Session = Depends(get_db),
-                 _: object = Depends(require_writer)):
+                 _: object = Depends(require_department("الإنتاج"))):
     """تسجيل إتمام صيانة: يعيد الآلة للعمل ويصفّر ساعات التشغيل مرجعيًا."""
     machine = db.get(models.Machine, machine_id)
     if not machine:
