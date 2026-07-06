@@ -28,6 +28,11 @@ TOKEN_TTL_SECONDS = 12 * 3600  # صلاحية الرمز: 12 ساعة
 
 WRITER_ROLES = {"admin", "manager"}
 
+DEPARTMENTS = [
+    "الإدارة", "المبيعات", "المشتريات", "المخازن",
+    "الإنتاج", "الجودة", "المحاسبة", "الموارد البشرية",
+]
+
 
 # ---------- كلمات المرور ----------
 def hash_password(password: str) -> str:
@@ -106,10 +111,29 @@ def get_optional_user(
 
 
 def require_writer(user: models.User = Depends(get_current_user)) -> models.User:
-    """يسمح بعمليات الكتابة لمديري النظام والمشرفين فقط."""
+    """يسمح بعمليات الكتابة العامة لمديري النظام والمشرفين فقط."""
     if user.role not in WRITER_ROLES:
-        raise HTTPException(status_code=403, detail="صلاحيتك (viewer) للقراءة فقط")
+        raise HTTPException(status_code=403, detail="ليست لديك صلاحية كتابة عامة")
     return user
+
+
+def require_department(department: str):
+    """صلاحية كتابة على مستوى القسم:
+
+    - admin و manager: يكتبون في كل الأقسام
+    - user: يكتب في قسمه فقط (أو إن كان قسمه «الإدارة»)
+    - viewer: قراءة فقط
+    """
+    def checker(user: models.User = Depends(get_current_user)) -> models.User:
+        if user.role in WRITER_ROLES:
+            return user
+        if user.role == "user" and user.department in (department, "الإدارة"):
+            return user
+        raise HTTPException(
+            status_code=403,
+            detail=f"هذه العملية مخصصة لقسم «{department}» (قسمك: {user.department}, دورك: {user.role})",
+        )
+    return checker
 
 
 def require_admin(user: models.User = Depends(get_current_user)) -> models.User:

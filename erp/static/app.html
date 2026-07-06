@@ -547,11 +547,12 @@ async function viewInventory(container) {
   const products = await api("/inventory/products");
   const card = document.createElement("div"); card.className = "card";
   card.appendChild(buildTable(
-    ["#", "الاسم", "SKU", "التصنيف", "الكمية", "حد الطلب", "التكلفة", "سعر البيع", "الحالة", "إجراءات"],
+    ["#", "الاسم", "SKU", "النوع", "الكمية", "حد الطلب", "التكلفة", "سعر البيع", "الحالة", "إجراءات"],
     products,
     p => {
       const tr = document.createElement("tr");
-      tr.append(td(p.id, "num"), td(p.name), td(p.sku), td(p.category),
+      tr.append(td(p.id, "num"), td(p.name), td(p.sku),
+                td(p.product_type === "raw" ? "🧱 مادة خام" : "📦 منتج نهائي"),
                 td(fmt(p.quantity), "num"), td(fmt(p.reorder_point), "num"),
                 td(fmt(p.unit_cost), "num"), td(fmt(p.unit_price), "num"));
       const status = document.createElement("td");
@@ -564,6 +565,7 @@ async function viewInventory(container) {
       if (canWrite()) {
         actions.append(
           actionBtn("± كمية", "", () => adjustForm(p)),
+          ...(p.product_type === "finished" ? [actionBtn("🧩 مكونات", "", () => bomModal(p))] : []),
           actionBtn("تعديل", "", () => productForm(p)),
           actionBtn("حذف", "danger", () => confirmDialog(`حذف المنتج «${p.name}»؟`, async () => {
             await api("/inventory/products/" + p.id, { method: "DELETE" });
@@ -577,12 +579,75 @@ async function viewInventory(container) {
   ));
   container.appendChild(card);
 
+  async function bomModal(p) {
+    const rawMaterials = products.filter(x => x.product_type === "raw");
+    const bom = await api(`/inventory/products/${p.id}/bom`);
+    modalBox.replaceChildren();
+    const h = document.createElement("h3");
+    h.textContent = `🧩 مكونات «${p.name}» (لكل وحدة منتجة)`;
+    modalBox.appendChild(h);
+    if (bom.length) {
+      const list = document.createElement("div");
+      for (const item of bom) {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--grid);font-size:14px";
+        const label = document.createElement("span");
+        label.textContent = `${item.component_name} — ${fmt(item.quantity_per_unit)}`;
+        const del = actionBtn("حذف", "danger", async () => {
+          await api(`/inventory/products/${p.id}/bom/${item.id}`, { method: "DELETE" });
+          toast("حُذف المكوّن"); closeModal(); bomModal(p);
+        });
+        row.append(label, del); list.appendChild(row);
+      }
+      modalBox.appendChild(list);
+    } else {
+      const empty = document.createElement("p"); empty.className = "desc";
+      empty.textContent = "لا مكونات بعد — أضف المواد الخام التي يستهلكها هذا المنتج.";
+      modalBox.appendChild(empty);
+    }
+    if (rawMaterials.length) {
+      const form = document.createElement("form");
+      form.style.cssText = "display:flex;gap:8px;margin-top:14px;align-items:flex-end";
+      const selWrap = document.createElement("div"); selWrap.style.flex = "1";
+      const sel = document.createElement("select");
+      for (const rm of rawMaterials) {
+        const o = document.createElement("option"); o.value = rm.id; o.textContent = rm.name;
+        sel.appendChild(o);
+      }
+      selWrap.appendChild(sel);
+      const qty = document.createElement("input");
+      qty.type = "number"; qty.step = "any"; qty.placeholder = "الكمية/وحدة"; qty.required = true;
+      qty.style.maxWidth = "110px";
+      const add = document.createElement("button"); add.className = "btn primary"; add.textContent = "إضافة";
+      form.append(selWrap, qty, add);
+      form.addEventListener("submit", async e => {
+        e.preventDefault();
+        await api(`/inventory/products/${p.id}/bom`, {
+          method: "POST",
+          body: { component_id: Number(sel.value), quantity_per_unit: Number(qty.value) },
+        });
+        toast("أُضيف المكوّن"); closeModal(); bomModal(p);
+      });
+      modalBox.appendChild(form);
+    }
+    const row = document.createElement("div"); row.className = "row";
+    const close = document.createElement("button"); close.className = "btn"; close.textContent = "إغلاق";
+    close.addEventListener("click", () => { closeModal(); render(); });
+    row.appendChild(close); modalBox.appendChild(row);
+    modalBack.classList.add("open");
+  }
+
   function productForm(p) {
     showForm({
       title: p ? "تعديل منتج: " + p.name : "إضافة منتج جديد",
       fields: [
         { name: "name", label: "اسم المنتج", value: p?.name, required: true },
         ...(p ? [] : [{ name: "sku", label: "رمز SKU (فريد)", required: true, placeholder: "مثال: PRD-100" }]),
+        ...(p ? [] : [{ name: "product_type", label: "النوع", type: "select", value: "finished",
+          options: [
+            { value: "finished", label: "📦 منتج نهائي (يُباع ويُنتج)" },
+            { value: "raw", label: "🧱 مادة خام (تدخل في التصنيع)" },
+          ] }]),
         { name: "category", label: "التصنيف", value: p?.category ?? "عام" },
         { name: "unit", label: "الوحدة", value: p?.unit ?? "قطعة" },
         ...(p ? [] : [{ name: "quantity", label: "الكمية الابتدائية", type: "number", value: 0 }]),
@@ -812,18 +877,34 @@ async function viewSales(container) {
 
   const card = document.createElement("div"); card.className = "card";
   card.appendChild(buildTable(
-    ["#", "المنتج", "العميل", "الكمية", "سعر الوحدة", "الإجمالي", "التاريخ"],
+    ["#", "المنتج", "العميل", "الكمية", "سعر الوحدة", "الإجمالي", "الحالة", "إجراءات"],
     [...orders].sort((a, b) => b.id - a.id).slice(0, 100),
     o => {
       const tr = document.createElement("tr");
       tr.append(td(o.id, "num"), td(productName(o.product_id)), td(o.customer_name),
                 td(fmt(o.quantity), "num"), td(fmt(o.unit_price), "num"),
-                td(fmt(o.quantity * o.unit_price), "num"), td(o.ordered_at.slice(0, 10)));
+                td(fmt(o.quantity * o.unit_price), "num"));
+      const st = document.createElement("td"); const badge = document.createElement("span");
+      badge.className = "badge" + (o.status === "pending_production" ? " low" : "");
+      badge.textContent = { confirmed: "✅ مؤكد", pending_production: "🏗️ بانتظار الإنتاج",
+                            delivered: "📦 مُسلَّم", cancelled: "✖ ملغى" }[o.status] || o.status;
+      st.appendChild(badge); tr.appendChild(st);
+      const actions = document.createElement("td"); actions.className = "actions";
+      if (canWrite() && (o.status === "confirmed" || o.status === "pending_production")) {
+        actions.appendChild(actionBtn("تسليم + فاتورة", "primary", async () => {
+          try {
+            const result = await api(`/sales/orders/${o.id}/deliver`, { method: "POST" });
+            toast("صدرت الفاتورة " + result.invoice_number + " وسُجّلت القيود");
+            render();
+          } catch (e) { toast(e.message, true); }
+        }));
+      }
+      tr.appendChild(actions);
       return tr;
     }
   ));
   const note = document.createElement("p"); note.className = "desc";
-  note.textContent = "يُعرض أحدث 100 طلب. البيع يخصم من المخزون تلقائيًا ويمنع البيع فوق المتاح.";
+  note.textContent = "بيع فوق المتاح؟ النظام ينشئ أمر إنتاج تلقائيًا للعجز، وإن نقصت المواد الخام ينشئ طلب شراء لقسم المشتريات. التسليم يصدر الفاتورة والقيود تلقائيًا.";
   card.appendChild(note);
   container.appendChild(card);
 
@@ -846,6 +927,219 @@ async function viewSales(container) {
       },
     });
   }
+}
+
+/* =========================================================
+   شاشة: المشتريات والموردون
+   ========================================================= */
+async function viewPurchases(container) {
+  const addSupplierBtn = actionBtn("＋ مورد جديد", "", () => supplierForm());
+  const addPoBtn = actionBtn("＋ أمر شراء", "primary", () => poForm());
+  addSupplierBtn.disabled = addPoBtn.disabled = !canWrite();
+  container.appendChild(toolbar("🚚 المشتريات والموردون", [addSupplierBtn, addPoBtn]));
+  writeGate(container);
+
+  const [suppliers, orders, products] = await Promise.all([
+    api("/purchases/suppliers"), api("/purchases/orders"), api("/inventory/products"),
+  ]);
+  const productName = id => products.find(p => p.id === id)?.name ?? ("#" + id);
+  const supplierName = id => id == null ? "—" : (suppliers.find(s => s.id === id)?.name ?? ("#" + id));
+
+  /* الطلبات التلقائية بانتظار الاعتماد */
+  const requested = orders.filter(o => o.status === "requested");
+  if (requested.length) {
+    const alertCard = document.createElement("div"); alertCard.className = "card";
+    alertCard.style.borderColor = "var(--warning)";
+    const h = document.createElement("h2");
+    h.textContent = `⚠️ ${requested.length} طلب شراء تلقائي بانتظار اعتمادك`;
+    const p = document.createElement("p"); p.className = "desc";
+    p.textContent = "أنشأها النظام تلقائيًا بسبب نقص مواد خام لأوامر إنتاج — عيّن المورد واعتمدها.";
+    alertCard.append(h, p);
+    container.appendChild(alertCard);
+  }
+
+  /* أوامر الشراء */
+  const poCard = document.createElement("div"); poCard.className = "card";
+  poCard.appendChild(Object.assign(document.createElement("h2"), { textContent: "أوامر الشراء" }));
+  poCard.appendChild(buildTable(
+    ["#", "الصنف", "المورد", "الكمية", "التكلفة", "المصدر", "الحالة", "ملاحظة", "إجراءات"],
+    [...orders].sort((a, b) => b.id - a.id),
+    o => {
+      const tr = document.createElement("tr");
+      tr.append(td(o.id, "num"), td(productName(o.product_id)), td(supplierName(o.supplier_id)),
+                td(fmt(o.quantity), "num"), td(fmt(o.unit_cost), "num"),
+                td(o.source === "auto" ? "🤖 تلقائي" : "يدوي"));
+      const st = document.createElement("td"); const badge = document.createElement("span");
+      badge.className = "badge" + (o.status === "requested" ? " low" : "");
+      badge.textContent = { requested: "⏳ بانتظار الاعتماد", ordered: "📦 مطلوب",
+                            received: "✅ مستلَم", cancelled: "✖ ملغى" }[o.status] || o.status;
+      st.appendChild(badge); tr.appendChild(st);
+      tr.appendChild(td(o.note || "—"));
+      const actions = document.createElement("td"); actions.className = "actions";
+      if (canWrite()) {
+        if (o.status === "requested")
+          actions.appendChild(actionBtn("اعتماد", "primary", () => approveForm(o)));
+        if (o.status === "ordered")
+          actions.appendChild(actionBtn("استلام", "primary", async () => {
+            await api(`/purchases/orders/${o.id}/receive`, { method: "POST" });
+            toast("استُلمت الشحنة: دخلت المخزون وسُجّل القيد"); render();
+          }));
+        if (o.status === "requested" || o.status === "ordered")
+          actions.appendChild(actionBtn("إلغاء", "danger", async () => {
+            await api(`/purchases/orders/${o.id}/cancel`, { method: "POST" });
+            toast("أُلغي الأمر"); render();
+          }));
+      }
+      tr.appendChild(actions);
+      return tr;
+    }
+  ));
+  container.appendChild(poCard);
+
+  /* الموردون */
+  const supCard = document.createElement("div"); supCard.className = "card";
+  supCard.appendChild(Object.assign(document.createElement("h2"), { textContent: "الموردون" }));
+  supCard.appendChild(buildTable(
+    ["#", "الاسم", "الهاتف", "البريد", "إجراءات"],
+    suppliers,
+    s => {
+      const tr = document.createElement("tr");
+      tr.append(td(s.id, "num"), td(s.name), td(s.phone || "—"), td(s.email || "—"));
+      const actions = document.createElement("td"); actions.className = "actions";
+      if (canWrite()) {
+        actions.append(
+          actionBtn("تعديل", "", () => supplierForm(s)),
+          actionBtn("حذف", "danger", () => confirmDialog(`حذف المورد «${s.name}»؟`, async () => {
+            await api("/purchases/suppliers/" + s.id, { method: "DELETE" });
+            toast("تم حذف المورد"); render();
+          })),
+        );
+      }
+      tr.appendChild(actions);
+      return tr;
+    }
+  ));
+  container.appendChild(supCard);
+
+  function supplierForm(s) {
+    showForm({
+      title: s ? "تعديل مورد: " + s.name : "إضافة مورد جديد",
+      fields: [
+        { name: "name", label: "اسم المورد", value: s?.name, required: true },
+        { name: "phone", label: "الهاتف", value: s?.phone ?? "" },
+        { name: "email", label: "البريد الإلكتروني", value: s?.email ?? "" },
+        { name: "address", label: "العنوان", value: s?.address ?? "" },
+      ],
+      onSubmit: async v => {
+        if (s) { await api("/purchases/suppliers/" + s.id, { method: "PUT", body: v }); toast("تم تحديث المورد"); }
+        else { await api("/purchases/suppliers", { method: "POST", body: v }); toast("أُضيف المورد"); }
+        render();
+      },
+    });
+  }
+  function poForm() {
+    if (!suppliers.length) { toast("أضف موردًا أولًا", true); return; }
+    showForm({
+      title: "أمر شراء جديد",
+      fields: [
+        { name: "supplier_id", label: "المورد", type: "select",
+          options: suppliers.map(s => ({ value: s.id, label: s.name })) },
+        { name: "product_id", label: "الصنف", type: "select",
+          options: products.map(p => ({ value: p.id, label: p.name + (p.product_type === "raw" ? " (مادة خام)" : "") })) },
+        { name: "quantity", label: "الكمية", type: "number", required: true },
+        { name: "unit_cost", label: "تكلفة الوحدة (اتركه فارغًا لتكلفة الصنف)", type: "number" },
+      ],
+      submitLabel: "إنشاء",
+      onSubmit: async v => {
+        const body = { supplier_id: Number(v.supplier_id), product_id: Number(v.product_id), quantity: v.quantity };
+        if (v.unit_cost !== null) body.unit_cost = v.unit_cost;
+        await api("/purchases/orders", { method: "POST", body });
+        toast("أُنشئ أمر الشراء"); render();
+      },
+    });
+  }
+  function approveForm(o) {
+    showForm({
+      title: `اعتماد الطلب التلقائي #${o.id} — ${productName(o.product_id)} (${fmt(o.quantity)})`,
+      fields: [
+        { name: "supplier_id", label: "اختر المورد", type: "select",
+          options: suppliers.map(s => ({ value: s.id, label: s.name })) },
+        { name: "quantity", label: "الكمية (يمكن تعديلها)", type: "number", value: o.quantity },
+        { name: "unit_cost", label: "تكلفة الوحدة", type: "number", value: o.unit_cost },
+      ],
+      submitLabel: "اعتماد",
+      onSubmit: async v => {
+        await api(`/purchases/orders/${o.id}/approve`, {
+          method: "POST",
+          body: { supplier_id: Number(v.supplier_id), quantity: v.quantity, unit_cost: v.unit_cost },
+        });
+        toast("اعتُمد الطلب وتحول لأمر شراء مؤكد"); render();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   شاشة: المحاسبة
+   ========================================================= */
+async function viewAccounting(container) {
+  container.appendChild(toolbar("🧾 المحاسبة"));
+  const [summary, invoices, journal] = await Promise.all([
+    api("/accounting/summary"), api("/accounting/invoices"), api("/accounting/journal"),
+  ]);
+
+  /* الملخص المالي */
+  const kpis = document.createElement("div"); kpis.className = "kpis";
+  const tiles = [
+    ["إيرادات المبيعات (شامل الضريبة)", fmt(summary.revenue), summary.invoices_count + " فاتورة"],
+    ["الضريبة المحصلة", fmt(summary.vat_collected), ""],
+    ["تكلفة البضاعة المباعة", fmt(summary.cogs), ""],
+    ["الربح الإجمالي", fmt(summary.gross_profit), ""],
+    ["الرواتب الشهرية", fmt(summary.monthly_payroll), ""],
+  ];
+  for (const [label, value, hint] of tiles) {
+    const t = document.createElement("div"); t.className = "tile";
+    for (const [cls, text] of [["label", label], ["value", value], ["hint", hint]]) {
+      const el = document.createElement("div"); el.className = cls; el.textContent = text; t.appendChild(el);
+    }
+    kpis.appendChild(t);
+  }
+  container.appendChild(kpis);
+
+  /* الفواتير */
+  const invCard = document.createElement("div"); invCard.className = "card";
+  invCard.appendChild(Object.assign(document.createElement("h2"), { textContent: "الفواتير" }));
+  invCard.appendChild(buildTable(
+    ["الرقم", "العميل", "الصنف", "قبل الضريبة", "الضريبة", "الإجمالي", "التاريخ", ""],
+    invoices,
+    i => {
+      const tr = document.createElement("tr");
+      tr.append(td(i.number), td(i.customer_name), td(i.product_name),
+                td(fmt(i.subtotal), "num"), td(fmt(i.vat_amount), "num"),
+                td(fmt(i.total), "num"), td(i.issued_at.slice(0, 10)));
+      const cell = document.createElement("td");
+      const printBtn = actionBtn("🖨 طباعة", "", () =>
+        window.open(`/accounting/invoices/${i.id}/print`, "_blank"));
+      cell.appendChild(printBtn); tr.appendChild(cell);
+      return tr;
+    }
+  ));
+  container.appendChild(invCard);
+
+  /* القيود */
+  const jCard = document.createElement("div"); jCard.className = "card";
+  jCard.appendChild(Object.assign(document.createElement("h2"), { textContent: "القيود المحاسبية (تلقائية)" }));
+  jCard.appendChild(buildTable(
+    ["#", "البيان", "مدين", "دائن", "المبلغ", "المرجع", "التاريخ"],
+    journal.slice(0, 100),
+    e => {
+      const tr = document.createElement("tr");
+      tr.append(td(e.id, "num"), td(e.description), td(e.debit_account), td(e.credit_account),
+                td(fmt(e.amount), "num"), td(e.reference || "—"), td(e.created_at.slice(0, 10)));
+      return tr;
+    }
+  ));
+  container.appendChild(jCard);
 }
 
 /* =========================================================
@@ -917,32 +1211,38 @@ async function viewUsers(container) {
   const users = await api("/auth/users");
   const card = document.createElement("div"); card.className = "card";
   card.appendChild(buildTable(
-    ["#", "اسم المستخدم", "الاسم الكامل", "الدور", "أُنشئ في"],
+    ["#", "اسم المستخدم", "الاسم الكامل", "الدور", "القسم", "أُنشئ في"],
     users,
     u => {
       const tr = document.createElement("tr");
-      tr.append(td(u.id, "num"), td(u.username), td(u.full_name || "—"), td(u.role), td(u.created_at.slice(0, 10)));
+      tr.append(td(u.id, "num"), td(u.username), td(u.full_name || "—"), td(u.role),
+                td(u.department || "—"), td(u.created_at.slice(0, 10)));
       return tr;
     }
   ));
   const roles = document.createElement("p"); roles.className = "desc";
-  roles.textContent = "الأدوار: admin (كل شيء) · manager (قراءة وكتابة) · viewer (قراءة فقط)";
+  roles.textContent = "الأدوار: admin (كل شيء) · manager (كتابة في كل الأقسام) · user (كتابة في قسمه فقط) · viewer (قراءة فقط)";
   card.appendChild(roles);
   container.appendChild(card);
 
   function userForm() {
+    const DEPARTMENTS = ["الإدارة", "المبيعات", "المشتريات", "المخازن",
+                         "الإنتاج", "الجودة", "المحاسبة", "الموارد البشرية"];
     showForm({
       title: "إضافة مستخدم جديد",
       fields: [
         { name: "username", label: "اسم المستخدم", required: true },
         { name: "full_name", label: "الاسم الكامل" },
         { name: "password", label: "كلمة المرور (6 أحرف فأكثر)", type: "password", required: true },
-        { name: "role", label: "الدور", type: "select", value: "viewer",
+        { name: "role", label: "الدور", type: "select", value: "user",
           options: [
+            { value: "user", label: "user — يكتب في قسمه فقط" },
             { value: "viewer", label: "viewer — قراءة فقط" },
-            { value: "manager", label: "manager — قراءة وكتابة" },
+            { value: "manager", label: "manager — كتابة في كل الأقسام" },
             { value: "admin", label: "admin — مدير نظام" },
           ] },
+        { name: "department", label: "القسم", type: "select", value: "الإدارة",
+          options: DEPARTMENTS.map(d => ({ value: d, label: d })) },
       ],
       submitLabel: "إنشاء",
       onSubmit: async v => {
@@ -962,6 +1262,8 @@ const VIEWS = [
   { id: "machines", label: "الآلات", render: viewMachines },
   { id: "production", label: "الإنتاج", render: viewProduction },
   { id: "sales", label: "المبيعات", render: viewSales },
+  { id: "purchases", label: "المشتريات", render: viewPurchases },
+  { id: "accounting", label: "المحاسبة", render: viewAccounting },
   { id: "employees", label: "الموظفون", render: viewEmployees },
   { id: "users", label: "المستخدمون", render: viewUsers },
 ];

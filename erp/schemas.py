@@ -12,6 +12,8 @@ class ProductCreate(BaseModel):
     name: str
     sku: str
     category: str = "عام"
+    product_type: str = Field(default="finished", pattern="^(finished|raw)$",
+                              description="finished منتج نهائي / raw مادة خام")
     unit: str = "قطعة"
     quantity: float = 0
     reorder_point: float = 10
@@ -40,6 +42,11 @@ class ProductUpdate(BaseModel):
 class StockAdjust(BaseModel):
     change: float = Field(description="التغيير في الكمية: موجب للإضافة وسالب للسحب")
     reason: str = "تسوية مخزون"
+
+
+class BOMItemCreate(BaseModel):
+    component_id: int = Field(description="رقم المادة الخام")
+    quantity_per_unit: float = Field(gt=0, description="الكمية المستهلكة لكل وحدة منتجة")
 
 
 # ---------- الآلات والصيانة ----------
@@ -96,10 +103,12 @@ class ProductionOrderOut(BaseModel):
     id: int
     product_id: int
     machine_id: Optional[int]
+    sales_order_id: Optional[int]
     planned_quantity: float
     produced_quantity: float
     defective_quantity: float
     status: str
+    source: str
     created_at: datetime
     completed_at: Optional[datetime]
 
@@ -123,6 +132,60 @@ class SalesOrderOut(BaseModel):
     unit_price: float
     status: str
     ordered_at: datetime
+    delivered_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+# ---------- الموردون والمشتريات ----------
+class SupplierCreate(BaseModel):
+    name: str
+    phone: str = ""
+    email: str = ""
+    address: str = ""
+
+
+class SupplierUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+
+
+class SupplierOut(SupplierCreate):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PurchaseOrderCreate(BaseModel):
+    supplier_id: int
+    product_id: int
+    quantity: float = Field(gt=0)
+    unit_cost: Optional[float] = Field(default=None, description="إن لم يُحدد تؤخذ تكلفة المنتج")
+
+
+class PurchaseApprove(BaseModel):
+    """اعتماد طلب شراء تلقائي: تعيين المورد (مع تعديل اختياري للكمية والتكلفة)"""
+    supplier_id: int
+    unit_cost: Optional[float] = None
+    quantity: Optional[float] = Field(default=None, gt=0)
+
+
+class PurchaseOrderOut(BaseModel):
+    id: int
+    supplier_id: Optional[int]
+    product_id: int
+    quantity: float
+    unit_cost: float
+    status: str
+    source: str
+    note: str
+    ordered_at: datetime
+    received_at: Optional[datetime]
 
     class Config:
         from_attributes = True
@@ -156,7 +219,9 @@ class UserCreate(BaseModel):
     username: str
     password: str = Field(min_length=6, description="6 أحرف على الأقل")
     full_name: str = ""
-    role: str = Field(default="viewer", pattern="^(admin|manager|viewer)$")
+    role: str = Field(default="viewer", pattern="^(admin|manager|user|viewer)$",
+                      description="admin كل شيء / manager كتابة عامة / user كتابة في قسمه / viewer قراءة")
+    department: str = "الإدارة"
 
 
 class UserOut(BaseModel):
@@ -164,6 +229,7 @@ class UserOut(BaseModel):
     username: str
     full_name: str
     role: str
+    department: str
     created_at: datetime
 
     class Config:
