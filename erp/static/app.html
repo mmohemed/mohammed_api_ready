@@ -1076,6 +1076,125 @@ async function viewQuality(container) {
 }
 
 /* =========================================================
+   شاشة: التحليلات الذكية
+   ========================================================= */
+async function viewAnalytics(container) {
+  container.appendChild(toolbar("🧠 التحليلات الذكية"));
+  const data = await api("/ai/analytics");
+
+  /* 1) نفاد المواد الخام */
+  const rawCard = document.createElement("div"); rawCard.className = "card";
+  rawCard.appendChild(Object.assign(document.createElement("h2"),
+    { textContent: "🧱 توقع نفاد المواد الخام (من استهلاك الإنتاج الفعلي)" }));
+  rawCard.appendChild(buildTable(
+    ["المادة", "المتاح", "الاستهلاك اليومي", "احتياج الأوامر المفتوحة", "أيام حتى النفاد", "الحالة"],
+    data.raw_materials,
+    m => {
+      const tr = document.createElement("tr");
+      tr.append(td(m.name), td(fmt(m.quantity) + " " + m.unit, "num"),
+                td(fmt(m.daily_consumption), "num"), td(fmt(m.upcoming_need), "num"),
+                td(m.days_until_stockout == null ? "—" : fmt(m.days_until_stockout), "num"));
+      const cell = document.createElement("td");
+      const badge = document.createElement("span");
+      badge.className = "badge" + (m.at_risk ? " low" : "");
+      badge.textContent = m.message;
+      cell.appendChild(badge); tr.appendChild(cell);
+      return tr;
+    }
+  ));
+  container.appendChild(rawCard);
+
+  /* 2) الأكثر ربحية */
+  const profitCard = document.createElement("div"); profitCard.className = "card";
+  profitCard.appendChild(Object.assign(document.createElement("h2"),
+    { textContent: "💎 المنتجات الأكثر ربحية" }));
+  profitCard.appendChild(buildTable(
+    ["#", "المنتج", "الوحدات المباعة", "الإيراد", "التكلفة", "الربح", "الهامش"],
+    data.profitability,
+    (p, i) => {
+      const tr = document.createElement("tr");
+      const rank = data.profitability.indexOf(p);
+      tr.append(td(rank === 0 ? "🥇" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : rank + 1),
+                td(p.name), td(fmt(p.units_sold), "num"), td(fmt(p.revenue), "num"),
+                td(fmt(p.cost), "num"), td(fmt(p.profit), "num"), td(p.margin_percent + "٪", "num"));
+      return tr;
+    }
+  ));
+  container.appendChild(profitCard);
+
+  /* 3) تأخر الإنتاج */
+  const delayCard = document.createElement("div"); delayCard.className = "card";
+  delayCard.appendChild(Object.assign(document.createElement("h2"),
+    { textContent: "⏰ تحليل تأخر الإنتاج" }));
+  const delayMsg = document.createElement("p"); delayMsg.className = "desc";
+  delayMsg.textContent = data.delays.message;
+  delayCard.appendChild(delayMsg);
+  if (data.delays.late_orders.length) {
+    delayCard.appendChild(buildTable(
+      ["الأمر", "المنتج", "الكمية", "عمره (أيام)", "الأسباب المرجحة"],
+      data.delays.late_orders,
+      o => {
+        const tr = document.createElement("tr");
+        tr.append(td("#" + o.order_id), td(o.product_name),
+                  td(fmt(o.planned_quantity), "num"), td(fmt(o.age_days), "num"));
+        const cell = document.createElement("td");
+        for (const cause of o.probable_causes) {
+          const line = document.createElement("div");
+          line.style.fontSize = "13px"; line.textContent = "• " + cause;
+          cell.appendChild(line);
+        }
+        tr.appendChild(cell);
+        return tr;
+      }
+    ));
+  }
+  container.appendChild(delayCard);
+
+  /* 4) أداء خطوط الإنتاج */
+  const machCard = document.createElement("div"); machCard.className = "card";
+  machCard.appendChild(Object.assign(document.createElement("h2"),
+    { textContent: "🏭 أداء خطوط الإنتاج (الآلات)" }));
+  machCard.appendChild(buildTable(
+    ["الآلة", "أوامر منجزة", "الإنتاج", "نسبة العيوب", "متوسط الإنجاز (يوم)", "خطر العطل", "درجة الأداء"],
+    data.machines,
+    m => {
+      const tr = document.createElement("tr");
+      tr.append(td(m.name), td(fmt(m.orders_completed), "num"), td(fmt(m.total_produced), "num"),
+                td(m.defect_rate_percent + "٪", "num"),
+                td(m.avg_completion_days == null ? "—" : fmt(m.avg_completion_days), "num"),
+                td(m.failure_risk_percent == null ? "—" : m.failure_risk_percent + "٪", "num"));
+      const cell = document.createElement("td");
+      const badge = document.createElement("span");
+      badge.className = "badge" + (m.performance_score < 60 ? " low" : "");
+      badge.textContent = (m.performance_score >= 80 ? "🟢 " : m.performance_score >= 60 ? "🟡 " : "🔴 ")
+                          + m.performance_score + " / 100";
+      cell.appendChild(badge); tr.appendChild(cell);
+      return tr;
+    }
+  ));
+  container.appendChild(machCard);
+
+  /* 5) أداء الموظفين */
+  const empCard = document.createElement("div"); empCard.className = "card";
+  empCard.appendChild(Object.assign(document.createElement("h2"),
+    { textContent: "👥 التزام الموظفين (آخر 30 يومًا من الحضور)" }));
+  empCard.appendChild(buildTable(
+    ["الموظف", "القسم", "أيام الحضور", "إجمالي الساعات", "متوسط ساعات اليوم"],
+    data.employees,
+    e => {
+      const tr = document.createElement("tr");
+      tr.append(td(e.name), td(e.department), td(fmt(e.days_present), "num"),
+                td(fmt(e.total_hours), "num"), td(fmt(e.avg_hours_per_day), "num"));
+      return tr;
+    }
+  ));
+  const empNote = document.createElement("p"); empNote.className = "desc";
+  empNote.textContent = "يُبنى التحليل على سجلات الحضور (اليدوية وأجهزة البصمة) — كلما زاد الاستخدام دقّت النتائج.";
+  empCard.appendChild(empNote);
+  container.appendChild(empCard);
+}
+
+/* =========================================================
    شاشة: المشتريات والموردون
    ========================================================= */
 async function viewPurchases(container) {
@@ -1502,6 +1621,7 @@ const VIEWS = [
   { id: "machines", label: "الآلات", icon: "⚙️", render: viewMachines },
   { id: "production", label: "الإنتاج", icon: "🏗️", render: viewProduction },
   { id: "quality", label: "الجودة", icon: "🔍", render: viewQuality },
+  { id: "analytics", label: "التحليلات الذكية", icon: "🧠", render: viewAnalytics },
   { id: "sales", label: "المبيعات", icon: "💰", render: viewSales },
   { id: "purchases", label: "المشتريات", icon: "🚚", render: viewPurchases },
   { id: "accounting", label: "المحاسبة", icon: "🧾", render: viewAccounting },

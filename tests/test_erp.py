@@ -338,6 +338,48 @@ class TestPhase2:
             assert wb.active.max_row >= 1, path
 
 
+# ---------- التحليلات الذكية ----------
+class TestAnalytics:
+    def test_analytics_endpoint_structure(self, client):
+        data = client.get("/ai/analytics").json()
+        for key in ("raw_materials", "profitability", "delays", "machines", "employees"):
+            assert key in data, key
+
+    def test_raw_material_runway(self, client):
+        materials = client.get("/ai/analytics").json()["raw_materials"]
+        assert materials, "يجب أن توجد مواد خام في seed"
+        assert all("days_until_stockout" in m and "daily_consumption" in m for m in materials)
+
+    def test_profitability_sorted_desc(self, client):
+        rows = client.get("/ai/analytics").json()["profitability"]
+        profits = [r["profit"] for r in rows]
+        assert profits == sorted(profits, reverse=True)
+        assert rows[0]["revenue"] > 0
+
+    def test_machine_performance_scores(self, client):
+        machines = client.get("/ai/analytics").json()["machines"]
+        assert machines
+        assert all(0 <= m["performance_score"] <= 100 for m in machines)
+
+    def test_delays_analysis(self, client, admin_headers):
+        delays = client.get("/ai/analytics").json()["delays"]
+        assert "late_orders" in delays and "message" in delays
+
+    def test_raw_material_shortage_in_insights(self, client, admin_headers):
+        """مادة خام يحتاجها أمر مفتوح أكثر من المتاح ← تظهر في الرؤى"""
+        raw = client.post("/inventory/products", headers=admin_headers, json={
+            "name": "خام الرؤى", "sku": "RAW-INS", "product_type": "raw",
+            "quantity": 1, "unit_cost": 1}).json()
+        fin = client.post("/inventory/products", headers=admin_headers, json={
+            "name": "منتج الرؤى", "sku": "FIN-INS", "quantity": 0}).json()
+        client.post(f"/inventory/products/{fin['id']}/bom", headers=admin_headers,
+                    json={"component_id": raw["id"], "quantity_per_unit": 5})
+        client.post("/production/orders", headers=admin_headers,
+                    json={"product_id": fin["id"], "planned_quantity": 100})
+        insights = client.get("/ai/insights").json()["insights"]
+        assert any(i["category"] == "مواد خام" and "خام الرؤى" in i["title"] for i in insights)
+
+
 # ---------- الذكاء الاصطناعي ----------
 class TestAI:
     def test_assistant_fallback_engine(self, client):
