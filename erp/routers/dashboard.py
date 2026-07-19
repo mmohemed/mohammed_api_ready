@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 import logging
 
 from .. import models, schemas
-from ..ai import llm_assistant
+from ..ai import analytics, llm_assistant
 from ..ai.assistant import answer_question
 from ..ai.insights import generate_insights
 from ..database import get_db
@@ -107,3 +107,22 @@ def ai_insights(db: Session = Depends(get_db)):
     """🤖 تقرير الرؤى الذكية: كل توصيات الذكاء الاصطناعي (صيانة، مخزون،
     جودة، طلب) مجمّعة ومرتبة بالأولوية — تقرير الصباح لمدير المصنع."""
     return generate_insights(db)
+
+
+@router.get("/ai/analytics")
+def ai_analytics(db: Session = Depends(get_db)):
+    """🧠 التحليلات الذكية الشاملة:
+
+    - توقع نفاد المواد الخام (من استهلاك الإنتاج الفعلي)
+    - المنتجات الأكثر ربحية
+    - تحليل أسباب تأخر الإنتاج
+    - أداء خطوط الإنتاج (الآلات) بدرجات
+    - أداء الموظفين من سجلات الحضور
+    """
+    return {
+        "raw_materials": analytics.raw_material_runway(db),
+        "profitability": analytics.product_profitability(db),
+        "delays": analytics.production_delays(db),
+        "machines": analytics.machine_performance(db),
+        "employees": analytics.employee_performance(db),
+    }

@@ -119,11 +119,33 @@ def _demand_insights(db: Session) -> list[dict]:
     return insights
 
 
+def _raw_material_insights(db: Session) -> list[dict]:
+    """توقع نفاد المواد الخام قبل حدوثه (من معدل استهلاك الإنتاج الفعلي)."""
+    from .analytics import raw_material_runway
+
+    insights = []
+    for material in raw_material_runway(db):
+        if not material["at_risk"]:
+            continue
+        days = material["days_until_stockout"]
+        insights.append({
+            "priority": 1 if (days is not None and days <= 7) else 2,
+            "category": "مواد خام",
+            "title": f"المادة الخام «{material['name']}»: {material['message'].replace('⚠️ ', '')}",
+            "recommendation": (
+                f"أنشئ أمر شراء الآن — الاستهلاك اليومي {material['daily_consumption']:g} {material['unit']}"
+                + (f" والأوامر المفتوحة تحتاج {material['upcoming_need']:g}" if material["upcoming_need"] else "")
+            ),
+        })
+    return insights
+
+
 def generate_insights(db: Session) -> dict:
     """يجمع كل الرؤى ويرتبها بالأولوية."""
     insights = (
         _machine_insights(db)
         + _inventory_insights(db)
+        + _raw_material_insights(db)
         + _quality_insights(db)
         + _demand_insights(db)
     )
