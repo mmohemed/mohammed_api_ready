@@ -10,7 +10,7 @@ pydantic>=2.0
 anthropic      # المساعد الذكي المتقدم (اختياري: يتطلب ANTHROPIC_API_KEY)
 paho-mqtt      # استقبال قراءات الحساسات عبر MQTT (اختياري: يتطلب ERP_MQTT_BROKER)
 pytest         # تشغيل الاختبارات: pytest
-httpx          # يحتاجه TestClient في الاختبارات
+httpx<0.28     # يحتاجه TestClient في الاختبارات (0.28 غير متوافقة مع starlette الحالية)
 qrcode         # باركود QR للمنتجات
 pillow         # توليد صور QR
 openpyxl       # تقارير Excel

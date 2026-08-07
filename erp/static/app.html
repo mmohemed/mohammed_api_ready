@@ -5,22 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Smart Factory ERP 🏭</title>
 <style>
+  /* ===== لوحة ألوان رسمية بيضاء ثابتة (لا تتأثر بوضع النظام الداكن) ===== */
   :root {
-    --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e;
-    --muted: #898781; --grid: #e1e0d9; --baseline: #c3c2b7;
-    --border: rgba(11,11,11,0.10); --series-1: #2a78d6;
+    --page: #ffffff;          /* خلفية الصفحة: أبيض */
+    --surface: #ffffff;       /* البطاقات والجداول: أبيض */
+    --ink: #101828;           /* النص الأساسي: كحلي داكن رسمي */
+    --ink-2: #475467;         /* النص الثانوي */
+    --muted: #98a2b3;         /* نص خافت (محاور، ملاحظات) */
+    --grid: #eaecf0;          /* خطوط الجداول والشبكة */
+    --baseline: #d0d5dd;      /* خط الأساس في المخططات */
+    --border: rgba(16,24,40,0.13);
+    --series-1: #1f5fa8;      /* أزرق رسمي للمخططات */
     --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
-    --good-track: #d9f2d9; --warning-track: #fdeecb; --critical-track: #f6d8d8;
-    --danger-bg: #fbeaea;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
-      --muted: #898781; --grid: #2c2c2a; --baseline: #383835;
-      --border: rgba(255,255,255,0.10); --series-1: #3987e5;
-      --good-track: #143814; --warning-track: #3d2f0a; --critical-track: #3c1414;
-      --danger-bg: #3c1414;
-    }
+    --good-track: #e3f5e3; --warning-track: #fdf1d6; --critical-track: #f9e3e3;
+    --danger-bg: #fdf0f0;
   }
   * { box-sizing: border-box; margin: 0; }
   body {
@@ -62,8 +60,7 @@
   /* ---------- منطقة المحتوى ---------- */
   .shell { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   header {
-    background: color-mix(in srgb, var(--surface) 82%, transparent);
-    backdrop-filter: blur(10px);
+    background: #ffffff;
     border-bottom: 1px solid var(--border);
     padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
     position: sticky; top: 0; z-index: 20;
@@ -92,17 +89,17 @@
     border: 1px solid var(--border); background: var(--surface); color: var(--ink);
   }
   .btn.primary {
-    background: linear-gradient(135deg, #2a78d6, #3f8de4); border-color: transparent; color: #fff;
-    box-shadow: 0 2px 8px rgba(42,120,214,0.35);
+    background: #1f5fa8; border-color: #1f5fa8; color: #fff; font-weight: 600;
   }
+  .btn.primary:hover { background: #1a5192; }
   .btn.danger { background: var(--danger-bg); border-color: var(--critical); color: var(--critical); }
   .btn.small { padding: 4px 10px; font-size: 12px; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ---------- بطاقات وجداول ---------- */
   .card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(15,30,60,0.06);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px; margin-bottom: 16px;
   }
   .card h2 { font-size: 15px; margin-bottom: 4px; }
   .card .desc { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
@@ -110,8 +107,10 @@
   .toolbar h2 { font-size: 17px; }
   .table-wrap { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-size: 13px; }
-  th { text-align: right; color: var(--ink-2); font-weight: 600; white-space: nowrap; }
-  th, td { padding: 8px; border-bottom: 1px solid var(--grid); }
+  thead tr { background: #f7f8fa; }
+  th { text-align: right; color: var(--ink-2); font-weight: 700; white-space: nowrap; }
+  th, td { padding: 9px 8px; border-bottom: 1px solid var(--grid); }
+  tbody tr:hover { background: #fafbfc; }
   td.num { font-variant-numeric: tabular-nums; }
   td.actions { white-space: nowrap; display: flex; gap: 6px; }
   .empty { color: var(--muted); font-size: 13px; padding: 16px 0; text-align: center; }
@@ -121,13 +120,11 @@
   /* ---------- KPI ---------- */
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .tile {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-    padding: 15px 17px; box-shadow: 0 1px 3px rgba(15,30,60,0.06);
-    transition: transform .15s, box-shadow .15s;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 15px 17px; border-top: 3px solid #1f5fa8;
   }
-  .tile:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(15,30,60,0.12); }
   .tile .label { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
-  .tile .value { font-size: 25px; font-weight: 600; }
+  .tile .value { font-size: 25px; font-weight: 700; }
   .tile .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
   /* ---------- مخطط ---------- */
@@ -169,8 +166,9 @@
   /* ---------- نماذج الإدخال ---------- */
   input, select {
     font: inherit; font-size: 14px; padding: 9px 12px; width: 100%;
-    border: 1px solid var(--border); border-radius: 8px; background: var(--page); color: var(--ink);
+    border: 1px solid #d0d5dd; border-radius: 8px; background: #ffffff; color: var(--ink);
   }
+  input:focus, select:focus { outline: 2px solid #1f5fa8; outline-offset: -1px; border-color: #1f5fa8; }
   label { font-size: 13px; color: var(--ink-2); display: block; margin-bottom: 4px; }
   .field { margin-bottom: 12px; }
   .modal-back {
